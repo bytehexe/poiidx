@@ -1,0 +1,13 @@
+from peewee import *
+from .baseModel import BaseModel
+from .ext import GeographyField
+from .country import Country
+
+class AdministrativeBoundary(BaseModel):
+    osm_id = BigIntegerField()
+    name = CharField()
+    region = CharField()
+    admin_level = IntegerField()
+    coordinates = GeographyField(index=True, index_type='GIST')
+    wikidata_id = CharField(null=True)
+    country = ForeignKeyField(Country, null=True)

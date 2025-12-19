@@ -1,0 +1,210 @@
+# list=OR, items in list=AND
+# Example:
+# - symbol: "example_symbol"
+#   description: "Example description"
+#   filters:
+#     - key1: value1
+#       key2: value2
+#     - key3: value3
+# This matches (key1=value1 AND key2=value2) OR (key3=value3)
+
+
+# == Places ==
+- symbol: "city"
+  description: "City or large town"
+  filters:
+    - place: city
+- symbol: "town"
+  description: "Town"
+  filters:
+    - place: town
+- symbol: "village"
+  description: "Village"
+  filters:
+    - place: village
+    - place: hamlet
+
+# == Tourism ==
+- symbol: "information"
+  description: "Tourist information office"
+  filters:
+    - tourism: information
+      information: office
+    - tourism: information
+      information: visitor_centre
+- symbol: "tourism"
+  description: "Tourist attraction"
+  filters:
+    - tourism: aquarium
+    - tourism: zoo
+    - tourism: attraction
+    - tourism: gallery
+    - tourism: theme_park
+- symbol: "picnic_site"
+  description: "Picnic site"
+  filters:
+    - tourism: picnic_site
+- symbol: "viewpoint"
+  description: "Scenic viewpoint"
+  filters:
+    - tourism: viewpoint
+
+# == Public Transport ==
+- symbol: "train_station"
+  description: "Train station"
+  filters:
+    - public_transport: station
+      train: True
+    - railway: station
+- symbol: "bus_stop"
+  description: "Bus stop"
+  filters:
+    - public_transport: stop_position
+      bus: True
+    - highway: bus_stop
+    - amenity: bus_station
+
+
+# == Accommodation ==
+- symbol: "accommodation"
+  description: "Accommodation"
+  filters:
+    - tourism: hotel
+    - building: hotel
+    - tourism: hostel
+    - tourism: guest_house
+    - tourism: camp_site
+    - tourism: camp_pitch
+    - tourism: caravan_site
+    - tourism: alpine_hut
+    - tourism: apartment
+    - tourism: chalet
+    - tourism: motel
+    - tourism: trail_riding_station
+    - tourism: wilderness_hut
+
+# == Food & Dining ==
+- symbol: "restaurant"
+  description: "Restaurant"
+  filters:
+    - amenity: restaurant
+- symbol: "cafe_bar"
+  description: "Cafe or bar"
+  filters:
+    - amenity: cafe
+    - amenity: bar
+    - amenity: pub
+    - amenity: biergarten
+    - amenity: fast_food
+    - amenity: ice_cream
+
+# == Cultural & Historic Sites ==
+- symbol: "museum"
+  description: "Museum or cultural site"
+  filters:
+    - tourism: museum
+    - tourism: artwork
+- symbol: "historic"
+  description: "Historic site or monument"
+  filters:
+    - historic: monument
+    - historic: memorial
+    - historic: castle
+    - historic: fort
+    - historic: ruins
+    - historic: archaeological_site
+    - historic: battlefield
+    - archaeological_site: True
+
+# == Religious & Entertainment ==
+- symbol: "place_of_worship"
+  description: "Religious site or place of worship"
+  filters:
+    - amenity: place_of_worship
+- symbol: "entertainment"
+  description: "Entertainment venue"
+  filters:
+    - amenity: theatre
+    - amenity: cinema
+    - amenity: arts_centre
+    - amenity: nightclub
+
+# == Shopping & Services ==
+- symbol: "shopping"
+  description: "Shopping area"
+  filters:
+    - amenity: marketplace
+    - building: supermarket
+    - building: retail
+    - shop: True
+- symbol: "services"
+  description: "Essential service"
+  filters:
+    - amenity: bank
+    - amenity: post_office
+    - amenity: hospital
+    - amenity: clinic
+    - amenity: pharmacy
+    - amenity: police
+    - amenity: fuel
+
+# == Recreation & Nature ==
+- symbol: "recreation"
+  description: "Park or recreational facility"
+  filters:
+    - leisure: common
+    - leisure: playground
+    - leisure: sports_centre
+
+- symbol: "marina"
+  description: "Marina or boating facility"
+  filters:
+    - leisure: marina
+
+- symbol: "golf_course"
+  description: "Golf course"
+  filters:
+    - leisure: golf_course
+
+- symbol: "beach"
+  description: "Beach or waterfront"
+  filters:
+    - natural: beach
+    - leisure: beach_resort
+    - tourism: beach_resort
+
+- symbol: forest_or_park
+  description: "Forest or park"
+  filters:
+    - landuse: forest
+    - leisure: forest
+    - leisure: park
+    - natural: forest
+    - natural: wood
+    - leisure: nature_reserve
+
+
+- symbol: "natural_features"
+  description: "Natural feature or landscape"
+  filters:
+    - natural: peak
+    - natural: volcano
+    - natural: cave_entrance
+    - natural: spring
+    - waterway: waterfall
+- symbol: "landmarks"
+  description: "Man-made landmark or structure"
+  filters:
+    - man_made: tower
+    - man_made: lighthouse
+    - man_made: windmill
+
+# == Transportation Hubs ==
+- symbol: "airport"
+  description: "Airport"
+  filters:
+    - aeroway: aerodrome
+- symbol: "ferry_terminal"
+  description: "Ferry terminal"
+  filters:
+    - amenity: ferry_terminal

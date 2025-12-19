@@ -25,7 +25,14 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "psycopg[binary]",
+  "psycopg2-binary",
+  "peewee",
+  "shapely",
+  "requests",
+  "pyyaml",
+  "platformdirs",
+  "osmium",
+  "pyproj",
 ]
 
 [project.urls]
@@ -35,6 +42,20 @@ Source = "https://github.com/bytehexe/poiidx"
 
 [tool.hatch.version]
 path = "src/poiidx/__about__.py"
+
+[tool.hatch.envs.default]
+extra-dependencies = [
+  "click"
+]
+
+[tool.hatch.envs.default.scripts]
+example = "python -m poiidx.example {args}"
+
+[tool.hatch.envs.hatch-test]
+extra-dependencies = [
+  "pytest>=7.0.0",
+  "testcontainers",
+]
 
 [tool.hatch.envs.types]
 extra-dependencies = [
@@ -60,4 +81,8 @@ exclude_lines = [
   "no cov",
   "if __name__ == .__main__.:",
   "if TYPE_CHECKING:",
+]
+[tool.pytest.ini_options]
+filterwarnings = [
+  "ignore::DeprecationWarning:testcontainers.*",
 ]
