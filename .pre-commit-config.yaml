@@ -1,0 +1,37 @@
+fail_fast: true
+default_install_hook_types: [pre-commit, commit-msg]
+repos:
+  - repo: local
+    hooks:
+      - id: yamllint
+        name: Yaml files must be well-formatted
+        language: system
+        entry: yamllint --no-warnings
+        types: [yaml]
+      - id: ruff-check
+        name: Python files must pass ruff checks
+        language: system
+        entry: hatch run ruff:ruff check
+        types: [python]
+      - id: ruff-format
+        name: Python files must be formatted with ruff
+        language: system
+        entry: hatch run ruff:ruff format --check
+        types: [python]
+      - id: mypy
+        name: Python files must be type-checked with mypy
+        language: system
+        entry: hatch run types:check
+        pass_filenames: false
+        types: [python]
+      - id: run-tests
+        name: Run unit tests
+        language: system
+        entry: bash -c "hatch test -- -m \"${PYTEST_MARK:-not slow}\""
+        types: [python]
+        pass_filenames: false
+      - id: gitlint
+        name: Commit messages must follow the conventional commits standard
+        language: system
+        entry: gitlint --msg-filename
+        stages: [commit-msg]

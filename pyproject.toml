@@ -64,6 +64,14 @@ extra-dependencies = [
 [tool.hatch.envs.types.scripts]
 check = "mypy --install-types --non-interactive {args:src/poiidx tests}"
 
+
+[tool.hatch.envs.ruff]
+skip-install = true
+detached = true
+extra-dependencies = ["ruff"]
+
+[tool.hatch.envs.mkdocs.scripts]
+serve = "PYTHONPATH=docs/ mkdocs serve --livereload {args}"
 [tool.coverage.run]
 source_pkgs = ["poiidx", "tests"]
 branch = true
@@ -86,3 +94,19 @@ exclude_lines = [
 filterwarnings = [
   "ignore::DeprecationWarning:testcontainers.*",
 ]
+[tool.ruff]
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "A", "COM", "ANN"]
+ignore = ["E501", "COM812", "ANN401"]
+fixable = ["ALL"]
+unfixable = []
+exclude = [".bzr", ".direnv", ".eggs", ".git", ".git-rewrite", ".hg", ".mypy_cache", ".nox", ".pants.d", ".pytype", ".ruff_cache", ".svn", ".tox", ".venv", "__pypackages__", "_build", "buck-out", "build", "dist", "node_modules", "venv"]
+
+[tool.ruff.lint.flake8-annotations]
+mypy-init-return = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

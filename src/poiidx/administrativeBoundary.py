@@ -1,8 +1,10 @@
 from peewee import *
-from .baseModel import BaseModel
-from .ext import GeographyField
-from .country import Country
 from playhouse.postgres_ext import BinaryJSONField
+
+from .baseModel import BaseModel
+from .country import Country
+from .ext import GeographyField
+
 
 class AdministrativeBoundary(BaseModel):
     osm_id = CharField()

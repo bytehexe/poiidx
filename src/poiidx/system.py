@@ -1,5 +1,7 @@
 from peewee import *
+
 from .baseModel import BaseModel
+
 
 class System(BaseModel):
     system = BooleanField(unique=True, default=True)
