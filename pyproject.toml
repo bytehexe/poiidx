@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "poiidx"
 dynamic = ["version"]
-description = ''
+description = 'Efficient spatial indexing and querying of Points of Interest using PostgreSQL and PostGIS'
 readme = "README.md"
 requires-python = ">=3.8"
 license = "MIT"
