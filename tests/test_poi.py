@@ -1,27 +1,29 @@
-from datetime import datetime
+from collections.abc import Generator
 
 import pytest
 from peewee import PostgresqlDatabase
-from poiidx.poi import Poi
-from poiidx.administrativeBoundary import AdministrativeBoundary
-from poiidx.country import Country
-from shapely.geometry import Point, Polygon
+from shapely.geometry import Point
 from testcontainers.postgres import PostgresContainer
 
+from poiidx.administrativeBoundary import AdministrativeBoundary
 from poiidx.baseModel import database
+from poiidx.country import Country
+from poiidx.poi import Poi
 
 
 @pytest.fixture(scope="module")
-def postgres_container():
+def postgres_container() -> Generator[PostgresContainer, None, None]:
     """Fixture to provide a PostgreSQL container with PostGIS extension."""
     with PostgresContainer("postgis/postgis:latest") as postgres:
         yield postgres
 
 
 @pytest.fixture(scope="module")
-def test_database(postgres_container):
+def test_database(
+    postgres_container: PostgresContainer,
+) -> Generator[PostgresqlDatabase, None, None]:
     """Fixture to provide a database connection and create tables."""
-    db = PostgresqlDatabase(
+    PostgresqlDatabase(
         postgres_container.dbname,
         user=postgres_container.username,
         password=postgres_container.password,
@@ -40,7 +42,7 @@ def test_database(postgres_container):
 
     # Enable PostGIS extension
     with database.connection_context():
-        cursor = database.execute_sql("CREATE EXTENSION IF NOT EXISTS postgis;")
+        database.execute_sql("CREATE EXTENSION IF NOT EXISTS postgis;")
 
     # Create tables (Country must be created first due to foreign key in AdministrativeBoundary)
     database.create_tables([Country, Poi, AdministrativeBoundary])
@@ -52,11 +54,7 @@ def test_database(postgres_container):
     database.close()
 
 
-def test_poi_insert_and_retrieve(test_database) -> None:
-    """Test that a POI object can be inserted and retrieved with identical values."""
-    # Create a test point geometry
-    test_point = Point(13.4050, 52.5200)  # Berlin coordinates
-def test_poi_insert_and_retrieve(test_database) -> None:
+def test_poi_insert_and_retrieve(test_database: PostgresqlDatabase) -> None:
     """Test that a POI object can be inserted and retrieved with identical values."""
     # Create a test point geometry
     test_point = Point(13.4050, 52.5200)  # Berlin coordinates
@@ -70,7 +68,7 @@ def test_poi_insert_and_retrieve(test_database) -> None:
         filter_item="amenity",
         filter_expression="restaurant",
         rank=1,
-        symbol="restaurant"
+        symbol="restaurant",
     )
 
     # Retrieve the POI from the database
@@ -94,7 +92,7 @@ def test_poi_insert_and_retrieve(test_database) -> None:
     assert all_pois[0].osm_id == "node/12345"
 
 
-def test_poi_multiple_inserts(test_database) -> None:
+def test_poi_multiple_inserts(test_database: PostgresqlDatabase) -> None:
     """Test inserting multiple POIs and retrieving them."""
     # Clear any existing data
     Poi.delete().execute()
@@ -108,7 +106,7 @@ def test_poi_multiple_inserts(test_database) -> None:
             "coordinates": Point(13.4050, 52.5200),
             "filter_item": "amenity",
             "filter_expression": "restaurant",
-            "rank": 1
+            "rank": 1,
         },
         {
             "osm_id": "node/002",
@@ -117,7 +115,7 @@ def test_poi_multiple_inserts(test_database) -> None:
             "coordinates": Point(13.4100, 52.5250),
             "filter_item": "amenity",
             "filter_expression": "cafe",
-            "rank": 2
+            "rank": 2,
         },
         {
             "osm_id": "node/003",
@@ -126,8 +124,8 @@ def test_poi_multiple_inserts(test_database) -> None:
             "coordinates": Point(2.3522, 48.8566),
             "filter_item": "amenity",
             "filter_expression": "bar",
-            "rank": 3
-        }
+            "rank": 3,
+        },
     ]
 
     # Insert all POIs
@@ -150,7 +148,7 @@ def test_poi_multiple_inserts(test_database) -> None:
         assert poi.coordinates.wkt == expected["coordinates"].wkt
 
 
-def test_poi_unique_osm_id_constraint(test_database) -> None:
+def test_poi_unique_osm_id_constraint(test_database: PostgresqlDatabase) -> None:
     """Test that duplicate OSM IDs can be inserted (no unique constraint on osm_id)."""
     # Clear any existing data
     Poi.delete().execute()
@@ -165,7 +163,7 @@ def test_poi_unique_osm_id_constraint(test_database) -> None:
         coordinates=test_point,
         filter_item="amenity",
         filter_expression="restaurant",
-        rank=1
+        rank=1,
     )
 
     # Insert another POI with the same osm_id (should succeed as there's no unique constraint)
@@ -176,15 +174,15 @@ def test_poi_unique_osm_id_constraint(test_database) -> None:
         coordinates=test_point,
         filter_item="amenity",
         filter_expression="cafe",
-        rank=2
+        rank=2,
     )
-    
+
     # Verify both POIs were inserted
     all_pois = list(Poi.select().where(Poi.osm_id == "node/duplicate"))
     assert len(all_pois) == 2
 
 
-def test_spatial_index_created(test_database) -> None:
+def test_spatial_index_created(test_database: PostgresqlDatabase) -> None:
     """Test that a spatial index has been created on the coordinates field."""
     # Query PostgreSQL system tables to check for the index
     query = """
@@ -199,7 +197,7 @@ def test_spatial_index_created(test_database) -> None:
         AND i.relname LIKE %s
     """
 
-    cursor = test_database.execute_sql(query, ('poi', '%coordinates%'))
+    cursor = test_database.execute_sql(query, ("poi", "%coordinates%"))
     results = cursor.fetchall()
 
     # Verify that at least one spatial index exists on the coordinates column
@@ -207,6 +205,7 @@ def test_spatial_index_created(test_database) -> None:
 
     # Check that the index type is SPGIST (as specified in the model)
     index_name, index_type = results[0]
-    assert index_type == 'spgist', f"Expected SPGIST index but got {index_type}"
-    assert 'coordinates' in index_name, f"Index name {index_name} doesn't reference coordinates field"
-
+    assert index_type == "spgist", f"Expected SPGIST index but got {index_type}"
+    assert "coordinates" in index_name, (
+        f"Index name {index_name} doesn't reference coordinates field"
+    )

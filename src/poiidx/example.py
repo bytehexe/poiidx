@@ -7,20 +7,28 @@ import poiidx
 
 
 @click.command()
-@click.option('--password-file', type=click.Path(exists=True), help='Path to file containing the database password.', required=True)
-@click.option('--re-init', is_flag=True, help='Re-initialize the database even if it already exists.')
-def run_example(password_file, re_init) -> None:
-
+@click.option(
+    "--password-file",
+    type=click.Path(exists=True),
+    help="Path to file containing the database password.",
+    required=True,
+)
+@click.option(
+    "--re-init",
+    is_flag=True,
+    help="Re-initialize the database even if it already exists.",
+)
+def run_example(password_file: str, re_init: bool) -> None:
     with open(password_file) as f:
         password = f.read().strip()
 
     poiidx.init(
-        host='localhost',
+        host="localhost",
         port=5432,
-        user='poiidx_user',
+        user="poiidx_user",
         password=password,
-        database='poiidx_db',
-        recreate=re_init
+        database="poiidx_db",
+        recreate=re_init,
     )
 
     click.echo("Database initialized.")
@@ -35,7 +43,9 @@ def run_example(password_file, re_init) -> None:
     if nearest_pois:
         click.echo(f"Found {len(nearest_pois)} POI(s) within 1 km:")
         for poi in nearest_pois:
-            click.echo(f"  - {poi['name']} (Region: {poi['region']}, Rank: {poi['rank']})")
+            click.echo(
+                f"  - {poi['name']} (Region: {poi['region']}, Rank: {poi['rank']})"
+            )
     else:
         click.echo("No POIs found within 5 km.")
     elapsed_time = time.time() - start_time
@@ -47,14 +57,18 @@ def run_example(password_file, re_init) -> None:
     if admin_hierarchy:
         click.echo("Administrative Hierarchy:")
         for admin in admin_hierarchy:
-            click.echo(f"  - Level {admin['admin_level']}: {admin['name']} (OSM ID: {admin['osm_id']})")
+            click.echo(
+                f"  - Level {admin['admin_level']}: {admin['name']} (OSM ID: {admin['osm_id']})"
+            )
     else:
         click.echo("No administrative boundaries found for the given point.")
 
     start_time = time.time()
     admin_hierarchy_str = poiidx.get_administrative_hierarchy_string(berlin_point)
     elapsed_time = time.time() - start_time
-    click.echo(f"\nAdministrative hierarchy string retrieval took {elapsed_time:.3f} seconds")
+    click.echo(
+        f"\nAdministrative hierarchy string retrieval took {elapsed_time:.3f} seconds"
+    )
     click.echo("\nAdministrative Hierarchy (String Representation):")
     click.echo(admin_hierarchy_str)
 
@@ -65,17 +79,26 @@ def run_example(password_file, re_init) -> None:
     if admin_hierarchy:
         click.echo("Administrative Hierarchy:")
         for admin in admin_hierarchy:
-            click.echo(f"  - Level {admin['admin_level']}: {admin['name']} (OSM ID: {admin['osm_id']})")
+            click.echo(
+                f"  - Level {admin['admin_level']}: {admin['name']} (OSM ID: {admin['osm_id']})"
+            )
     else:
         click.echo("No administrative boundaries found for the given point.")
 
     # Get administrative hierarchy string for Hannover, but in French
     start_time = time.time()
-    admin_hierarchy_str = poiidx.get_administrative_hierarchy_string(hannover_point, lang='fr')
+    admin_hierarchy_str = poiidx.get_administrative_hierarchy_string(
+        hannover_point, lang="fr"
+    )
     elapsed_time = time.time() - start_time
-    click.echo(f"\nAdministrative hierarchy string retrieval took {elapsed_time:.3f} seconds")
-    click.echo("\nAdministrative Hierarchy for Hannover (String Representation in French):")
+    click.echo(
+        f"\nAdministrative hierarchy string retrieval took {elapsed_time:.3f} seconds"
+    )
+    click.echo(
+        "\nAdministrative Hierarchy for Hannover (String Representation in French):"
+    )
     click.echo(admin_hierarchy_str)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     run_example()

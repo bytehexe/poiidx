@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 import osmium
 import shapely
@@ -12,7 +13,8 @@ from .projection import LocalProjection
 
 logger = logging.getLogger(__name__)
 
-def encode_osm_id(obj) -> str:
+
+def encode_osm_id(obj: Any) -> str:
     """Get the original OSM ID from an osmium object with type prefix.
 
     When using .with_areas(), osmium converts way/relation IDs to area IDs:
@@ -42,7 +44,8 @@ def encode_osm_id(obj) -> str:
     else:
         return f"{type_str}{obj_id}"
 
-def administrative_scan(pbf_path, region_key) -> None:
+
+def administrative_scan(pbf_path: str, region_key: str) -> None:
     processor = osmium.FileProcessor(pbf_path)
     processor.with_filter(osmium.filter.TagFilter(("boundary", "administrative")))
     processor.with_filter(osmium.filter.KeyFilter("name"))
@@ -76,7 +79,10 @@ def administrative_scan(pbf_path, region_key) -> None:
                 localized_names=localized_names,
             )
 
-def poi_scan(filter_config, pbf_path, region_key) -> None:
+
+def poi_scan(
+    filter_config: list[dict[str, Any]], pbf_path: str, region_key: str
+) -> None:
     all_filters_keys = set()
     for filter_item in filter_config:
         for filter_expression in filter_item["filters"]:
@@ -161,7 +167,8 @@ def poi_scan(filter_config, pbf_path, region_key) -> None:
                 localized_names=localized_names,
             )
 
-def extract_localized_names(obj):
+
+def extract_localized_names(obj: Any) -> dict[str, str]:
     localizations = [x for x in list(obj.tags) if x.k.startswith("name:")]
     localized_names = {}
     for loc_tag in localizations:

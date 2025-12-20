@@ -1,4 +1,4 @@
-from peewee import *
+from peewee import CharField
 from playhouse.postgres_ext import BinaryJSONField
 
 from .baseModel import BaseModel

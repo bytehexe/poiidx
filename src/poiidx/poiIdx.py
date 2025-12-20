@@ -3,6 +3,7 @@ import logging
 import pathlib
 import tempfile
 from contextlib import nullcontext
+from typing import Any
 
 import platformdirs
 import shapely
@@ -24,12 +25,12 @@ from .system import System
 
 logger = logging.getLogger(__name__)
 
-class PoiIdx:
 
+class PoiIdx:
     TABLES = [Poi, System, AdministrativeBoundary, Country]
 
     @classmethod
-    def connect(cls, pbf_cache=True, **kwargs) -> None:
+    def connect(cls, pbf_cache: bool = True, **kwargs: Any) -> None:
         database.init(**kwargs)
         cls.__finder = None
         cls.__pbf_cache = pbf_cache
@@ -60,7 +61,11 @@ class PoiIdx:
     @classmethod
     def init_if_new(cls) -> None:
         existing_tables = database.get_tables()
-        tables_to_create = [table for table in cls.TABLES if table._meta.table_name not in existing_tables]
+        tables_to_create = [
+            table
+            for table in cls.TABLES
+            if table._meta.table_name not in existing_tables
+        ]
         if tables_to_create:
             cls.recreate_schema()
             cls.init_region_data()
@@ -79,13 +84,17 @@ class PoiIdx:
             system = System.get_or_none(System.system)
 
             if system is None or system.region_index is None:
-                raise RuntimeError("Region data is not initialized. Please run init_region_data() first.")
+                raise RuntimeError(
+                    "Region data is not initialized. Please run init_region_data() first."
+                )
 
             cls.__finder = RegionFinder(json.loads(system.region_index))
         return cls.__finder
 
     @classmethod
-    def find_regions_by_shape(cls, shape: shapely.geometry.base.BaseGeometry):
+    def find_regions_by_shape(
+        cls, shape: shapely.geometry.base.BaseGeometry
+    ) -> list[Any]:
         regions = cls.get_finder().find_regions(shape)
         return regions
 
@@ -98,15 +107,27 @@ class PoiIdx:
     def initialize_pois_for_region(cls, region_key: str) -> None:
         """Initialize POIs for a given region."""
         # Use the finder to get the URL for the region
-        region = next((r for r in cls.get_finder().geofabrik_data["features"] if r["properties"]["id"] == region_key), None)
+        region = next(
+            (
+                r
+                for r in cls.get_finder().geofabrik_data["features"]
+                if r["properties"]["id"] == region_key
+            ),
+            None,
+        )
         if region is None:
-            raise ValueError(f"Region with key {region_key} not found in Geofabrik data.")
+            raise ValueError(
+                f"Region with key {region_key} not found in Geofabrik data."
+            )
 
         region_url = region["properties"]["urls"]["pbf"]
         region_id = region["properties"]["id"]
 
         if cls.__pbf_cache:
-            cachedir = pathlib.Path(platformdirs.user_cache_dir("mkmapdiary", "bytehexe")) / "pbf"
+            cachedir = (
+                pathlib.Path(platformdirs.user_cache_dir("mkmapdiary", "bytehexe"))
+                / "pbf"
+            )
             cachedir.mkdir(parents=True, exist_ok=True)
             tempfile_context = nullcontext()
         else:
@@ -119,7 +140,9 @@ class PoiIdx:
 
             # Here you would add the logic to parse the PBF file and populate the POI table.
             # This is a placeholder for demonstration purposes.
-            logger.info(f"Initialized POIs for region {region_key} from PBF file {pbf_file}")
+            logger.info(
+                f"Initialized POIs for region {region_key} from PBF file {pbf_file}"
+            )
 
             # For now, hardcode the filter configuration
             with open(pathlib.Path(__file__).parent / "poi_filter_config.yaml") as f:
@@ -129,7 +152,9 @@ class PoiIdx:
             administrative_scan(pbf_file, region_id)
 
     @classmethod
-    def init_regions_by_shape(cls, shape: shapely.geometry.base.BaseGeometry, buffer):
+    def init_regions_by_shape(
+        cls, shape: shapely.geometry.base.BaseGeometry, buffer: float | None
+    ) -> list[Any]:
         """Initialize POIs and administrative boundaries for a given region key."""
 
         if buffer is not None:
@@ -148,7 +173,14 @@ class PoiIdx:
         return [region.id for region in regions]
 
     @classmethod
-    def get_nearest_pois(cls, shape: shapely.geometry.base.BaseGeometry, max_distance: float | None = None, limit: int = 1, regions: list[str] | None = None, rank_range: tuple[int, int] | None = None):
+    def get_nearest_pois(
+        cls,
+        shape: shapely.geometry.base.BaseGeometry,
+        max_distance: float | None = None,
+        limit: int = 1,
+        regions: list[str] | None = None,
+        rank_range: tuple[int, int] | None = None,
+    ) -> list[Poi]:
         """Get nearest POIs to the given shape using KNN index.
 
         Args:
@@ -174,29 +206,34 @@ class PoiIdx:
         # Optionally filter by max distance first
         if max_distance is not None:
             query = query.where(
-                SQL("ST_DWithin(coordinates, ST_GeogFromText(%s), %s)", (shape.wkt, max_distance))
+                SQL(
+                    "ST_DWithin(coordinates, ST_GeogFromText(%s), %s)",
+                    (shape.wkt, max_distance),
+                )
             )
 
         # Use KNN operator (<->) for efficient nearest neighbor search with index
-        query = (
-            query
-            .order_by(knn(Poi.coordinates, SQL("ST_GeogFromText(%s)", (shape.wkt,))))
-            .limit(limit)
-        )
+        query = query.order_by(
+            knn(Poi.coordinates, SQL("ST_GeogFromText(%s)", (shape.wkt,)))
+        ).limit(limit)
 
         return list(query)
 
     @classmethod
-    def get_administrative_hierarchy(cls, shape: shapely.geometry.base.BaseGeometry):
+    def get_administrative_hierarchy(
+        cls, shape: shapely.geometry.base.BaseGeometry
+    ) -> list[AdministrativeBoundary]:
         """Get administrative boundaries containing the given shape.
 
         Args:
             shape: Shapely geometry to search from
         """
 
-        query = AdministrativeBoundary.select().where(
-            SQL("ST_Covers(coordinates, ST_GeogFromText(%s))", (shape.wkt,))
-        ).order_by(AdministrativeBoundary.admin_level.desc())
+        query = (
+            AdministrativeBoundary.select()
+            .where(SQL("ST_Covers(coordinates, ST_GeogFromText(%s))", (shape.wkt,)))
+            .order_by(AdministrativeBoundary.admin_level.desc())
+        )
 
         hierarchy = list(query)
 
@@ -229,7 +266,9 @@ class PoiIdx:
         return hierarchy
 
     @classmethod
-    def get_administrative_hierarchy_string(cls, shape: shapely.geometry.base.BaseGeometry, lang=None):
+    def get_administrative_hierarchy_string(
+        cls, shape: shapely.geometry.base.BaseGeometry, lang: str | None = None
+    ) -> str:
         """Get administrative boundaries containing the given shape as a formatted string.
 
         Args:

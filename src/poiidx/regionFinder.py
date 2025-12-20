@@ -12,6 +12,7 @@ class Region(NamedTuple):
     name: str
     url: str
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -64,7 +65,7 @@ class RegionFinder:
         used_region_ids = {r.id for r in used_regions}
 
         for region in self.geofabrik_data["features"]:
-            #if "iso3166-1:alpha2" not in region["properties"]:
+            # if "iso3166-1:alpha2" not in region["properties"]:
             #    continue  # Skip regions without country code
 
             region_id = region["properties"]["id"]

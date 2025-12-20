@@ -1,6 +1,7 @@
-from peewee import *
+from peewee import Model, PostgresqlDatabase
 
 database = PostgresqlDatabase(None)
+
 
 class BaseModel(Model):
     class Meta:

@@ -8,12 +8,11 @@ from .__about__ import __version__
 from .administrativeBoundary import AdministrativeBoundary
 from .country import Country
 
-HEADERS = {
-    "User-Agent": f"poiidx/{__version__} (https://github.com/bytehexe/poiidx)"
-}
+HEADERS = {"User-Agent": f"poiidx/{__version__} (https://github.com/bytehexe/poiidx)"}
 
 # Global variable to track next allowed execution time
 _next_allowed_execution = 0.0
+
 
 def _rate_limited_get(url: str, headers: dict) -> requests.Response:
     """Perform a rate-limited GET request with automatic retry on 429."""
@@ -31,7 +30,7 @@ def _rate_limited_get(url: str, headers: dict) -> requests.Response:
         # Check if we got a 429 (Too Many Requests)
         if response.status_code == 429:
             # Get Retry-After header (can be in seconds or HTTP date)
-            retry_after = response.headers.get('Retry-After')
+            retry_after = response.headers.get("Retry-After")
             if retry_after:
                 try:
                     # Try to parse as seconds
@@ -39,7 +38,9 @@ def _rate_limited_get(url: str, headers: dict) -> requests.Response:
                 except ValueError:
                     # Parse as HTTP date
                     retry_date = parsedate_to_datetime(retry_after)
-                    wait_time = (retry_date - datetime.now(timezone.utc)).total_seconds()
+                    wait_time = (
+                        retry_date - datetime.now(timezone.utc)
+                    ).total_seconds()
 
                 # Add 1 second backoff
                 _next_allowed_execution = time.time() + wait_time + 1.0
@@ -54,6 +55,7 @@ def _rate_limited_get(url: str, headers: dict) -> requests.Response:
 
         return response
 
+
 def r(rank: str) -> int:
     """Return a numeric value for the given rank string."""
     if rank == "preferred":
@@ -65,13 +67,19 @@ def r(rank: str) -> int:
     else:
         return 1
 
-def country_query(admin_with_wikidata: AdministrativeBoundary) -> tuple[str | None, dict] | None:
+
+def country_query(
+    admin_with_wikidata: AdministrativeBoundary,
+) -> tuple[str | None, dict] | None:
     """Check if the given Wikidata ID is in a country and return the country name."""
     base_url = "https://www.wikidata.org/w/rest.php/wikibase/v1"
 
     # Check database first
     if admin_with_wikidata.country and admin_with_wikidata.country.name:
-        return admin_with_wikidata.country.name, admin_with_wikidata.country.localized_names
+        return (
+            admin_with_wikidata.country.name,
+            admin_with_wikidata.country.localized_names,
+        )
 
     wikidata_id = admin_with_wikidata.wikidata_id
 
@@ -80,7 +88,11 @@ def country_query(admin_with_wikidata: AdministrativeBoundary) -> tuple[str | No
     response = _rate_limited_get(url, headers=HEADERS)
     response.raise_for_status()
     data = response.json()
-    country_id = sorted(data.get("P17", [{}]), key=lambda x: r(x.get("rank", "normal")))[0].get("value", {}).get("content", None)
+    country_id = (
+        sorted(data.get("P17", [{}]), key=lambda x: r(x.get("rank", "normal")))[0]
+        .get("value", {})
+        .get("content", None)
+    )
     if not country_id:
         return None
 
@@ -98,7 +110,10 @@ def country_query(admin_with_wikidata: AdministrativeBoundary) -> tuple[str | No
     response = _rate_limited_get(url, headers=HEADERS)
     response.raise_for_status()
     data = response.json()
-    native_labels = [x.get("value", {}).get("content", None).get("text") for x in data.get("P1705", [])]
+    native_labels = [
+        x.get("value", {}).get("content", None).get("text")
+        for x in data.get("P1705", [])
+    ]
 
     # Fetch all labels for the country
     url = f"{base_url}/entities/items/{country_id}/labels"
@@ -119,7 +134,9 @@ def country_query(admin_with_wikidata: AdministrativeBoundary) -> tuple[str | No
         return None
     else:
         # Store in database for future queries
-        c = Country.create(wikidata_id=country_id, name=label, localized_names=label_data)
+        c = Country.create(
+            wikidata_id=country_id, name=label, localized_names=label_data
+        )
         admin_with_wikidata.country = c
         admin_with_wikidata.save()
 
