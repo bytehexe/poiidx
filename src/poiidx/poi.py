@@ -4,7 +4,7 @@ from .ext import GeographyField
 from playhouse.postgres_ext import BinaryJSONField
 
 class Poi(BaseModel):
-    osm_id = BigIntegerField()
+    osm_id = CharField()
     name = CharField()
     region = CharField(index=True)
     coordinates = GeographyField(index=True, index_type='SPGIST')

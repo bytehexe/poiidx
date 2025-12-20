@@ -5,7 +5,7 @@ from .country import Country
 from playhouse.postgres_ext import BinaryJSONField
 
 class AdministrativeBoundary(BaseModel):
-    osm_id = BigIntegerField()
+    osm_id = CharField()
     name = CharField()
     region = CharField()
     admin_level = IntegerField()

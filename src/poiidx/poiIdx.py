@@ -215,7 +215,7 @@ class PoiIdx:
             if result is not None:
                 name, localized_names = result
                 country_admin = AdministrativeBoundary(
-                    osm_id=0,
+                    osm_id="N/A",
                     name=name,
                     region="global",
                     admin_level=2,

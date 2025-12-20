@@ -11,6 +11,36 @@ from .projection import LocalProjection
 
 logger = logging.getLogger(__name__)
 
+def encode_osm_id(obj):
+    """Get the original OSM ID from an osmium object with type prefix.
+    
+    When using .with_areas(), osmium converts way/relation IDs to area IDs:
+    - Ways: area_id = way_id * 2
+    - Relations: area_id = relation_id * 2 + 1
+    
+    Returns a string with type prefix (e.g., "r62422", "n123", "w456").
+    """
+    type_str = obj.type_str()
+    obj_id = obj.id
+    
+    if type_str == "n":
+        # Nodes keep their original ID
+        return f"n{obj_id}"
+    elif type_str == "a":
+        # Area: decode to get original way or relation ID
+        if obj_id % 2 == 0:
+            # Even = way
+            return f"w{obj_id // 2}"
+        else:
+            # Odd = relation
+            return f"r{(obj_id - 1) // 2}"
+    elif type_str == "w":
+        return f"w{obj_id}"
+    elif type_str == "r":
+        return f"r{obj_id}"
+    else:
+        return f"{type_str}{obj_id}"
+
 def administrative_scan(pbf_path, region_key):
     processor = osmium.FileProcessor(pbf_path)
     processor.with_filter(osmium.filter.TagFilter(("boundary", "administrative")))
@@ -36,7 +66,7 @@ def administrative_scan(pbf_path, region_key):
             # Store administrative boundary in the database
             # Assuming an AdministrativeBoundary model exists
             AdministrativeBoundary.create(
-                osm_id=obj.id,
+                osm_id=encode_osm_id(obj),
                 name=name,
                 region=region_key,
                 admin_level=admin_level,
@@ -90,7 +120,7 @@ def poi_scan(filter_config, pbf_path, region_key):
                 continue
 
             type_str = obj.type_str()
-            poi_id = obj.id
+            poi_id = encode_osm_id(obj)
 
             if type_str == "n":
                 geom = shapely.Point(obj.lon, obj.lat)
