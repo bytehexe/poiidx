@@ -5,3 +5,6 @@ __pycache__/
 
 # secret files
 *.pwd
+/.*cache
+__about__.py
+dist/
