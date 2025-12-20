@@ -4,7 +4,7 @@ from peewee import PostgresqlDatabase
 from shapely.geometry import Polygon
 from datetime import datetime
 
-from poiidx.baseModel import database_proxy
+from poiidx.baseModel import database
 from poiidx.region import Region
 
 
@@ -27,7 +27,7 @@ def database(postgres_container):
     )
     
     # Initialize the database proxy
-    database_proxy.initialize(db)
+    database.initialize(db)
     
     # Enable PostGIS extension
     with db.cursor() as cursor:

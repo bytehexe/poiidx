@@ -1,11 +1,12 @@
 from peewee import PostgresqlDatabase, SQL
-from .baseModel import database_proxy
+from .baseModel import database
 from .system import System
 from .geofabrik import download_region_data
 from .regionFinder import RegionFinder
 from .poi import Poi
 from .country import Country
 from .administrativeBoundary import AdministrativeBoundary
+from .projection import LocalProjection
 import shapely
 import json
 import yaml
@@ -26,71 +27,84 @@ class PoiIdx:
 
     TABLES = [Poi, System, AdministrativeBoundary, Country]
 
-    def __init__(self, pbf_cache=True, **kwargs):
-        self.db = PostgresqlDatabase(**kwargs)
-        self.db.connect()
-        database_proxy.initialize(self.db)
-        self.__finder = None
+    @classmethod
+    def connect(cls, pbf_cache=True, **kwargs):
+        database.init(**kwargs)
+        cls.__finder = None
+        cls.__pbf_cache = pbf_cache
+        cls._initialized = True
 
-        self.__pbf_cache = pbf_cache
+    @classmethod
+    def assert_initialized(cls):
+        if not hasattr(cls, "_initialized"):
+            raise RuntimeError("PoiIdx not initialized. Call PoiIdx.connect() first.")
 
-    def close(self):
-        self.db.close()
+    @classmethod
+    def close(cls):
+        database.close()
 
-    def init_schema(self):
-        self.db.create_tables(self.TABLES)
+    @classmethod
+    def init_schema(cls):
+        database.create_tables(cls.TABLES)
 
-    def drop_schema(self):
-        self.db.drop_tables(self.TABLES)
+    @classmethod
+    def drop_schema(cls):
+        database.drop_tables(cls.TABLES)
 
-    def recreate_schema(self):
-        self.drop_schema()
-        self.init_schema()
+    @classmethod
+    def recreate_schema(cls):
+        cls.drop_schema()
+        cls.init_schema()
 
-    def init_if_new(self):
-        existing_tables = self.db.get_tables()
-        tables_to_create = [table for table in self.TABLES if table._meta.table_name not in existing_tables]
+    @classmethod
+    def init_if_new(cls):
+        existing_tables = database.get_tables()
+        tables_to_create = [table for table in cls.TABLES if table._meta.table_name not in existing_tables]
         if tables_to_create:
-            self.recreate_schema()
-            self.init_region_data()
+            cls.recreate_schema()
+            cls.init_region_data()
 
-    def init_region_data(self):
+    @staticmethod
+    def init_region_data():
         # Initialize the Region table with a default system region
         System.create(system=True)
         
         # Download region data
         download_region_data()
 
-    @property
-    def finder(self):
-        if self.__finder is None:
+    @classmethod
+    def get_finder(cls) -> RegionFinder:
+        if cls.__finder is None:
             system = System.get_or_none(System.system == True)
 
             if system is None or system.region_index is None:
                 raise RuntimeError("Region data is not initialized. Please run init_region_data() first.")
 
-            self.__finder = RegionFinder(json.loads(system.region_index))
-        return self.__finder
+            cls.__finder = RegionFinder(json.loads(system.region_index))
+        return cls.__finder
 
-    def find_regions_by_shape(self, shape: shapely.geometry.base.BaseGeometry):
-        regions = self.finder.find_regions(shape)
+    @classmethod
+    def find_regions_by_shape(cls, shape: shapely.geometry.base.BaseGeometry):
+        regions = cls.get_finder().find_regions(shape)
         return regions
     
-    def has_region_data(self, region_key: str) -> bool:
+    @classmethod
+    def has_region_data(cls, region_key: str) -> bool:
         """Return true if there is at least one POI for the given region key."""
         return Poi.select().where(Poi.region == region_key).exists()
     
-    def initialize_pois_for_region(self, region_key: str):
+    @classmethod
+    def initialize_pois_for_region(cls, region_key: str):
         """Initialize POIs for a given region."""
         # Use the finder to get the URL for the region
-        region = next((r for r in self.finder.geofabrik_data["features"] if r["properties"]["id"] == region_key), None)
+        region = next((r for r in cls.get_finder().geofabrik_data["features"] if r["properties"]["id"] == region_key), None)
         if region is None:
             raise ValueError(f"Region with key {region_key} not found in Geofabrik data.")
         
         region_url = region["properties"]["urls"]["pbf"]
         region_id = region["properties"]["id"]
 
-        if self.__pbf_cache:
+        if cls.__pbf_cache:
             cachedir = pathlib.Path(platformdirs.user_cache_dir("mkmapdiary", "bytehexe")) / "pbf"
             cachedir.mkdir(parents=True, exist_ok=True)
             tempfile_context = nullcontext()
@@ -113,7 +127,27 @@ class PoiIdx:
             poi_scan(filter_config, pbf_file, region_id)
             administrative_scan(pbf_file, region_id)
 
-    def get_nearest_pois(self, shape: shapely.geometry.base.BaseGeometry, max_distance: float | None = None, limit: int = 1, regions: list[str] | None = None, rank_range: tuple[int, int] | None = None):
+    @classmethod
+    def init_regions_by_shape(cls, shape: shapely.geometry.base.BaseGeometry, buffer):
+        """Initialize POIs and administrative boundaries for a given region key."""
+
+        if buffer is not None:
+            lp = LocalProjection(shape)
+            local_shape = lp.to_local(shape)
+            local_shape = local_shape.convex_hull().buffer(buffer)
+            shape = lp.to_wgs(local_shape)
+
+        regions = cls.find_regions_by_shape(shape)
+        if not regions:
+            return []
+        for region in regions:
+            if not cls.has_region_data(region.id):
+                cls.initialize_pois_for_region(region.id)
+
+        return [region.id for region in regions]
+
+    @classmethod
+    def get_nearest_pois(cls, shape: shapely.geometry.base.BaseGeometry, max_distance: float | None = None, limit: int = 1, regions: list[str] | None = None, rank_range: tuple[int, int] | None = None):
         """Get nearest POIs to the given shape using KNN index.
         
         Args:
@@ -151,13 +185,13 @@ class PoiIdx:
         
         return list(query)
     
-    def get_administrative_hierarchy(self, shape: shapely.geometry.base.BaseGeometry):
+    @classmethod
+    def get_administrative_hierarchy(cls, shape: shapely.geometry.base.BaseGeometry):
         """Get administrative boundaries containing the given shape.
         
         Args:
             shape: Shapely geometry to search from
         """
-        from peewee import SQL
         
         query = AdministrativeBoundary.select().where(
             SQL("ST_Covers(coordinates, ST_GeogFromText(%s))", (shape.wkt,))
@@ -191,13 +225,14 @@ class PoiIdx:
 
         return hierarchy
     
-    def get_administrative_hierarchy_string(self, shape: shapely.geometry.base.BaseGeometry):
+    @classmethod
+    def get_administrative_hierarchy_string(cls, shape: shapely.geometry.base.BaseGeometry):
         """Get administrative boundaries containing the given shape as a formatted string.
         
         Args:
             shape: Shapely geometry to search from
         """
-        admin_boundaries = self.get_administrative_hierarchy(shape)
+        admin_boundaries = cls.get_administrative_hierarchy(shape)
         items = []
         last_name = None
         for admin in admin_boundaries:

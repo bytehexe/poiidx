@@ -5,7 +5,7 @@ from shapely.geometry import shape
 import shapely
 from .poi import Poi
 from .administrativeBoundary import AdministrativeBoundary
-from .baseModel import database_proxy as db
+from .baseModel import database as db
 from .osm import calculate_rank, MAX_RANK
 from .projection import LocalProjection
 
@@ -100,9 +100,6 @@ def poi_scan(filter_config, pbf_path, region_key):
                 geom = shape(obj.__geo_interface__["geometry"])  # type: ignore
                 proj = LocalProjection(geom)
                 local_geom = proj.to_local(geom)
-                centroid = proj.to_wgs(local_geom.centroid)
-                lat = centroid.y
-                lon = centroid.x
                 radius = shapely.minimum_bounding_radius(local_geom)
                 rank = calculate_rank(radius=radius, place=obj.tags.get("place"))
 

@@ -1,7 +1,7 @@
 from peewee import *
 
-database_proxy = DatabaseProxy()  # Create a proxy for our db.
+database = PostgresqlDatabase(None)
 
 class BaseModel(Model):
     class Meta:
-        database = database_proxy  # Use proxy for our DB.
+        database = database  # Use proxy for our DB.
