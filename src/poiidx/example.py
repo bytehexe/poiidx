@@ -1,6 +1,6 @@
 import time
 
-import click
+import click  # type: ignore[import-not-found]
 from shapely.geometry import Point
 
 import poiidx

@@ -130,7 +130,7 @@ def poi_scan(
             poi_id = encode_osm_id(obj)
 
             if type_str == "n":
-                geom = shapely.Point(obj.lon, obj.lat)
+                geom = shapely.Point(obj.lon, obj.lat)  # type: ignore[union-attr]
                 rank = calculate_rank(place=obj.tags.get("place"))
                 radius = None
 

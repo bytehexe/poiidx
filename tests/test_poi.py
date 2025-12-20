@@ -1,9 +1,9 @@
 from collections.abc import Generator
 
-import pytest
+import pytest  # type: ignore[import-not-found]
 from peewee import PostgresqlDatabase
 from shapely.geometry import Point
-from testcontainers.postgres import PostgresContainer
+from testcontainers.postgres import PostgresContainer  # type: ignore[import-not-found]
 
 from poiidx.administrativeBoundary import AdministrativeBoundary
 from poiidx.baseModel import database
@@ -145,7 +145,7 @@ def test_poi_multiple_inserts(test_database: PostgresqlDatabase) -> None:
         assert poi.filter_item == expected["filter_item"]
         assert poi.filter_expression == expected["filter_expression"]
         assert poi.rank == expected["rank"]
-        assert poi.coordinates.wkt == expected["coordinates"].wkt
+        assert poi.coordinates.wkt == expected["coordinates"].wkt  # type: ignore[attr-defined]
 
 
 def test_poi_unique_osm_id_constraint(test_database: PostgresqlDatabase) -> None:

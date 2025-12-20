@@ -32,9 +32,9 @@ class PoiIdx:
     @classmethod
     def connect(cls, pbf_cache: bool = True, **kwargs: Any) -> None:
         database.init(**kwargs)
-        cls.__finder = None
-        cls.__pbf_cache = pbf_cache
-        cls._initialized = True
+        cls.__finder = None  # type: ignore[attr-defined]
+        cls.__pbf_cache = pbf_cache  # type: ignore[attr-defined]
+        cls._initialized = True  # type: ignore[attr-defined]
 
     @classmethod
     def assert_initialized(cls) -> None:
@@ -64,7 +64,7 @@ class PoiIdx:
         tables_to_create = [
             table
             for table in cls.TABLES
-            if table._meta.table_name not in existing_tables
+            if table._meta.table_name not in existing_tables  # type: ignore[attr-defined]
         ]
         if tables_to_create:
             cls.recreate_schema()
@@ -80,7 +80,7 @@ class PoiIdx:
 
     @classmethod
     def get_finder(cls) -> RegionFinder:
-        if cls.__finder is None:
+        if cls.__finder is None:  # type: ignore[attr-defined]
             system = System.get_or_none(System.system)
 
             if system is None or system.region_index is None:
@@ -88,8 +88,8 @@ class PoiIdx:
                     "Region data is not initialized. Please run init_region_data() first."
                 )
 
-            cls.__finder = RegionFinder(json.loads(system.region_index))
-        return cls.__finder
+            cls.__finder = RegionFinder(json.loads(system.region_index))  # type: ignore[attr-defined]
+        return cls.__finder  # type: ignore[attr-defined]
 
     @classmethod
     def find_regions_by_shape(
@@ -123,16 +123,16 @@ class PoiIdx:
         region_url = region["properties"]["urls"]["pbf"]
         region_id = region["properties"]["id"]
 
-        if cls.__pbf_cache:
+        if cls.__pbf_cache:  # type: ignore[attr-defined]
             cachedir = (
                 pathlib.Path(platformdirs.user_cache_dir("mkmapdiary", "bytehexe"))
                 / "pbf"
             )
             cachedir.mkdir(parents=True, exist_ok=True)
-            tempfile_context = nullcontext()
+            tempfile_context: Any = nullcontext()
         else:
             tempfile_context = tempfile.TemporaryDirectory()
-            cachedir = pathlib.Path(tempfile_context.name)
+            cachedir = pathlib.Path(tempfile_context.name)  # type: ignore[attr-defined]
 
         with tempfile_context:
             pbf_handler = Pbf(cachedir)
@@ -148,8 +148,8 @@ class PoiIdx:
             with open(pathlib.Path(__file__).parent / "poi_filter_config.yaml") as f:
                 filter_config = yaml.safe_load(f)
 
-            poi_scan(filter_config, pbf_file, region_id)
-            administrative_scan(pbf_file, region_id)
+            poi_scan(filter_config, str(pbf_file), region_id)
+            administrative_scan(str(pbf_file), region_id)
 
     @classmethod
     def init_regions_by_shape(
@@ -281,9 +281,9 @@ class PoiIdx:
             if lang is None or admin.localized_names is None:
                 name = admin.name
             else:
-                name = admin.localized_names.get(lang, admin.name)
+                name = admin.localized_names.get(lang, admin.name)  # type: ignore[attr-defined]
 
             if name != last_name:
                 items.append(name)
                 last_name = name
-        return ", ".join(items)
+        return ", ".join(items)  # type: ignore[arg-type]
