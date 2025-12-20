@@ -63,13 +63,13 @@ def r(rank: str) -> int:
     else:
         return 1
 
-def country_query(admin_with_wikidata: AdministrativeBoundary) -> str | None:
+def country_query(admin_with_wikidata: AdministrativeBoundary) -> tuple[str | None, dict] | None:
     """Check if the given Wikidata ID is in a country and return the country name."""
     base_url = "https://www.wikidata.org/w/rest.php/wikibase/v1"
 
     # Check database first
     if admin_with_wikidata.country and admin_with_wikidata.country.name:
-        return admin_with_wikidata.country.name
+        return admin_with_wikidata.country.name, admin_with_wikidata.country.localized_names
     
     wikidata_id = admin_with_wikidata.wikidata_id
 
@@ -89,7 +89,7 @@ def country_query(admin_with_wikidata: AdministrativeBoundary) -> str | None:
         admin_with_wikidata.country = country
         admin_with_wikidata.save()
 
-        return country.name
+        return country.name, country.localized_names
     
     # Fetch the native labels for the country
     url = f"{base_url}/entities/items/{country_id}/statements?property=P1705"
@@ -117,8 +117,8 @@ def country_query(admin_with_wikidata: AdministrativeBoundary) -> str | None:
         return None
     else:
         # Store in database for future queries
-        c = Country.create(wikidata_id=country_id, name=label)
+        c = Country.create(wikidata_id=country_id, name=label, localized_names=label_data)
         admin_with_wikidata.country = c
         admin_with_wikidata.save()
         
-        return label
+        return label, label_data

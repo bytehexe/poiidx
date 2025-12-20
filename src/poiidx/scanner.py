@@ -30,6 +30,9 @@ def administrative_scan(pbf_path, region_key):
             if admin_level is None or name is None:
                 continue
 
+            # Extract localized names
+            localized_names = extract_localized_names(obj)
+
             # Store administrative boundary in the database
             # Assuming an AdministrativeBoundary model exists
             AdministrativeBoundary.create(
@@ -38,7 +41,8 @@ def administrative_scan(pbf_path, region_key):
                 region=region_key,
                 admin_level=admin_level,
                 coordinates=geom,
-                wikidata_id=obj.tags.get("wikidata")
+                wikidata_id=obj.tags.get("wikidata"),
+                localized_names=localized_names,
             )
 
 def poi_scan(filter_config, pbf_path, region_key):
@@ -111,6 +115,9 @@ def poi_scan(filter_config, pbf_path, region_key):
                 "Filter expression ID should not be None"
             )
 
+            # Prepare localization data if available
+            localized_names = extract_localized_names(obj)
+
             Poi.create(
                 osm_id=poi_id,
                 name=poi_name,
@@ -120,4 +127,20 @@ def poi_scan(filter_config, pbf_path, region_key):
                 rank=rank,
                 coordinates=geom,
                 symbol=filter_item["symbol"],
+                localized_names=localized_names,
             )
+
+def extract_localized_names(obj):
+    localizations = [x for x in list(obj.tags) if x.k.startswith("name:")]
+    localized_names = {}
+    for loc_tag in localizations:
+        loc_lang = loc_tag.k.split("name:")[1]
+
+        if len(loc_lang) != 2 or not loc_lang.isalpha() or not loc_lang.islower():
+            continue  # Skip invalid language codes:
+
+        loc_name = loc_tag.v
+        if loc_name:
+            localized_names[loc_lang] = loc_name
+
+    return localized_names

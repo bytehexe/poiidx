@@ -211,8 +211,9 @@ class PoiIdx:
                 break
 
         if admin_with_wikidata is not None and admin_with_wikidata.admin_level <= 6:
-            name = country_query(admin_with_wikidata)
-            if name is not None:
+            result = country_query(admin_with_wikidata)
+            if result is not None:
+                name, localized_names = result
                 country_admin = AdministrativeBoundary(
                     osm_id=0,
                     name=name,
@@ -220,13 +221,14 @@ class PoiIdx:
                     admin_level=2,
                     coordinates=None,
                     wikidata_id=None,
+                    localized_names=localized_names,
                 )
                 hierarchy.append(country_admin)
 
         return hierarchy
     
     @classmethod
-    def get_administrative_hierarchy_string(cls, shape: shapely.geometry.base.BaseGeometry):
+    def get_administrative_hierarchy_string(cls, shape: shapely.geometry.base.BaseGeometry, lang=None):
         """Get administrative boundaries containing the given shape as a formatted string.
         
         Args:
@@ -236,7 +238,12 @@ class PoiIdx:
         items = []
         last_name = None
         for admin in admin_boundaries:
-            if admin.name != last_name:
-                items.append(admin.name)
-                last_name = admin.name
+            if lang is None or admin.localized_names is None:
+                name = admin.name
+            else:
+                name = admin.localized_names.get(lang, admin.name)
+
+            if name != last_name:
+                items.append(name)
+                last_name = name
         return ", ".join(items)

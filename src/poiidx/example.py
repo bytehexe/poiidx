@@ -33,7 +33,7 @@ def run_example(password_file, re_init):
     if nearest_pois:
         click.echo(f"Found {len(nearest_pois)} POI(s) within 1 km:")
         for poi in nearest_pois:
-            click.echo(f"  - {poi.name} (Region: {poi.region}, Rank: {poi.rank})")
+            click.echo(f"  - {poi['name']} (Region: {poi['region']}, Rank: {poi['rank']})")
     else:
         click.echo("No POIs found within 5 km.")
     elapsed_time = time.time() - start_time
@@ -45,7 +45,7 @@ def run_example(password_file, re_init):
     if admin_hierarchy:
         click.echo("Administrative Hierarchy:")
         for admin in admin_hierarchy:
-            click.echo(f"  - Level {admin.admin_level}: {admin.name} (OSM ID: {admin.osm_id})")
+            click.echo(f"  - Level {admin['admin_level']}: {admin['name']} (OSM ID: {admin['osm_id']})")
     else:
         click.echo("No administrative boundaries found for the given point.")
 
@@ -63,9 +63,17 @@ def run_example(password_file, re_init):
     if admin_hierarchy:
         click.echo("Administrative Hierarchy:")
         for admin in admin_hierarchy:
-            click.echo(f"  - Level {admin.admin_level}: {admin.name} (OSM ID: {admin.osm_id})")
+            click.echo(f"  - Level {admin['admin_level']}: {admin['name']} (OSM ID: {admin['osm_id']})")
     else:
         click.echo("No administrative boundaries found for the given point.")
+
+    # Get administrative hierarchy string for Hannover, but in French
+    start_time = time.time()
+    admin_hierarchy_str = poiidx.get_administrative_hierarchy_string(hannover_point, lang='fr')
+    elapsed_time = time.time() - start_time
+    click.echo(f"\nAdministrative hierarchy string retrieval took {elapsed_time:.3f} seconds")
+    click.echo("\nAdministrative Hierarchy for Hannover (String Representation in French):")
+    click.echo(admin_hierarchy_str)
 
 if __name__ == '__main__':
     run_example()

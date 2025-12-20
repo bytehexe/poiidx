@@ -1,6 +1,7 @@
 from peewee import *
 from .baseModel import BaseModel
 from .ext import GeographyField
+from playhouse.postgres_ext import BinaryJSONField
 
 class Poi(BaseModel):
     osm_id = BigIntegerField()
@@ -11,3 +12,4 @@ class Poi(BaseModel):
     filter_expression = CharField()
     rank = IntegerField(index=True)
     symbol = CharField(null=True)
+    localized_names = BinaryJSONField(null=True)
