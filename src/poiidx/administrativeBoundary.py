@@ -7,8 +7,8 @@ from playhouse.postgres_ext import BinaryJSONField
 class AdministrativeBoundary(BaseModel):
     osm_id = CharField()
     name = CharField()
-    region = CharField()
-    admin_level = IntegerField()
+    region = CharField(index=True)
+    admin_level = IntegerField(index=True)
     coordinates = GeographyField(index=True, index_type='GIST')
     wikidata_id = CharField(null=True)
     country = ForeignKeyField(Country, null=True)
