@@ -13,12 +13,14 @@ def assert_initialized() -> None:
         raise RuntimeError("PoiIdx not initialized. Call poiidx.init() first.") from e
 
 
-def init(recreate: bool = False, **kwargs: Any) -> None:
+def init(
+    filter_config: list[dict[str, Any]], recreate: bool = False, **kwargs: Any
+) -> None:
     PoiIdx.connect(**kwargs)
     if recreate:
         PoiIdx.drop_schema()
 
-    PoiIdx.init_if_new()
+    PoiIdx.init_if_new(filter_config=filter_config)
 
 
 def close() -> None:

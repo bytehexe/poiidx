@@ -1,6 +1,8 @@
+import pathlib
 import time
 
 import click  # type: ignore[import-not-found]
+import yaml
 from shapely.geometry import Point
 
 import poiidx
@@ -22,7 +24,11 @@ def run_example(password_file: str, re_init: bool) -> None:
     with open(password_file) as f:
         password = f.read().strip()
 
+    with open(pathlib.Path(__file__).parent / "poi_filter_config.yaml") as f:
+        filter_config = yaml.safe_load(f)
+
     poiidx.init(
+        filter_config=filter_config,
         host="localhost",
         port=5432,
         user="poiidx_user",

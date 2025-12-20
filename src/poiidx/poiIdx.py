@@ -7,7 +7,6 @@ from typing import Any
 
 import platformdirs
 import shapely
-import yaml
 from peewee import SQL
 
 from .administrativeBoundary import AdministrativeBoundary
@@ -59,21 +58,32 @@ class PoiIdx:
         cls.init_schema()
 
     @classmethod
-    def init_if_new(cls) -> None:
+    def init_if_new(cls, filter_config: list[dict[str, Any]]) -> None:
         existing_tables = database.get_tables()
         tables_to_create = [
             table
             for table in cls.TABLES
             if table._meta.table_name not in existing_tables  # type: ignore[attr-defined]
         ]
+        do_recreate = False
         if tables_to_create:
+            do_recreate = True
+        else:
+            system = System.get_or_none(System.system)
+            if system is None:
+                do_recreate = True
+            else:
+                if system.filter_config != json.dumps(filter_config):
+                    do_recreate = True
+
+        if do_recreate:
             cls.recreate_schema()
-            cls.init_region_data()
+            cls.init_region_data(filter_config=filter_config)
 
     @staticmethod
-    def init_region_data() -> None:
+    def init_region_data(filter_config: list[dict[str, Any]]) -> None:
         # Initialize the Region table with a default system region
-        System.create(system=True)
+        System.create(system=True, filter_config=json.dumps(filter_config))
 
         # Download region data
         download_region_data()
@@ -134,6 +144,14 @@ class PoiIdx:
             tempfile_context = tempfile.TemporaryDirectory()
             cachedir = pathlib.Path(tempfile_context.name)  # type: ignore[attr-defined]
 
+        # Get the filter config from the System table
+        system = System.get_or_none(System.system)
+        if system is None:
+            raise RuntimeError(
+                "System configuration not found. Please run init_region_data() first."
+            )
+        filter_config = json.loads(system.filter_config)
+
         with tempfile_context:
             pbf_handler = Pbf(cachedir)
             pbf_file = pbf_handler.get_pbf_filename(region_id, region_url)
@@ -143,10 +161,6 @@ class PoiIdx:
             logger.info(
                 f"Initialized POIs for region {region_key} from PBF file {pbf_file}"
             )
-
-            # For now, hardcode the filter configuration
-            with open(pathlib.Path(__file__).parent / "poi_filter_config.yaml") as f:
-                filter_config = yaml.safe_load(f)
 
             poi_scan(filter_config, str(pbf_file), region_id)
             administrative_scan(str(pbf_file), region_id)
