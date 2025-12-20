@@ -1,28 +1,29 @@
-import osmium
-import sys
 import logging
-from shapely.geometry import shape
+
+import osmium
 import shapely
-from .poi import Poi
+from shapely.geometry import shape
+
 from .administrativeBoundary import AdministrativeBoundary
 from .baseModel import database as db
-from .osm import calculate_rank, MAX_RANK
+from .osm import MAX_RANK, calculate_rank
+from .poi import Poi
 from .projection import LocalProjection
 
 logger = logging.getLogger(__name__)
 
-def encode_osm_id(obj):
+def encode_osm_id(obj) -> str:
     """Get the original OSM ID from an osmium object with type prefix.
-    
+
     When using .with_areas(), osmium converts way/relation IDs to area IDs:
     - Ways: area_id = way_id * 2
     - Relations: area_id = relation_id * 2 + 1
-    
+
     Returns a string with type prefix (e.g., "r62422", "n123", "w456").
     """
     type_str = obj.type_str()
     obj_id = obj.id
-    
+
     if type_str == "n":
         # Nodes keep their original ID
         return f"n{obj_id}"
@@ -41,7 +42,7 @@ def encode_osm_id(obj):
     else:
         return f"{type_str}{obj_id}"
 
-def administrative_scan(pbf_path, region_key):
+def administrative_scan(pbf_path, region_key) -> None:
     processor = osmium.FileProcessor(pbf_path)
     processor.with_filter(osmium.filter.TagFilter(("boundary", "administrative")))
     processor.with_filter(osmium.filter.KeyFilter("name"))
@@ -75,7 +76,7 @@ def administrative_scan(pbf_path, region_key):
                 localized_names=localized_names,
             )
 
-def poi_scan(filter_config, pbf_path, region_key):
+def poi_scan(filter_config, pbf_path, region_key) -> None:
     all_filters_keys = set()
     for filter_item in filter_config:
         for filter_expression in filter_item["filters"]:

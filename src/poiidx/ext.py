@@ -1,15 +1,15 @@
-from peewee import Expression, Field
-from shapely.geometry.base import BaseGeometry
+from peewee import SQL, Expression, Field
 from shapely import wkb
-from peewee import SQL
+from shapely.geometry.base import BaseGeometry
+
 
 def knn(lhs, rhs):
     return Expression(lhs, '<->', rhs)
 
 class GeometryField(Field):
     field_type = 'geometry'
-    
-    def __init__(self, srid=4326, *args, **kwargs):
+
+    def __init__(self, srid=4326, *args, **kwargs) -> None:
         self.srid = srid
         super().__init__(*args, **kwargs)
 
@@ -20,7 +20,7 @@ class GeometryField(Field):
                 (value.wkt, self.srid)
             )
         return value
-    
+
     def python_value(self, value):
         if value is not None:
             return wkb.loads(bytes.fromhex(value))
@@ -28,8 +28,8 @@ class GeometryField(Field):
 
 class GeographyField(Field):
     field_type = 'geography'
-    
-    def __init__(self, srid=4326, *args, **kwargs):
+
+    def __init__(self, srid=4326, *args, **kwargs) -> None:
         self.srid = srid
         super().__init__(*args, **kwargs)
 
@@ -40,7 +40,7 @@ class GeographyField(Field):
                 (value.wkt,)
             )
         return value
-    
+
     def python_value(self, value):
         if value is not None:
             return wkb.loads(bytes.fromhex(value))

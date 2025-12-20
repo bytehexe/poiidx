@@ -1,30 +1,31 @@
 import shapely
+from playhouse.shortcuts import model_to_dict
 
 from poiidx.poiIdx import PoiIdx
-from playhouse.shortcuts import model_to_dict 
 
-def assert_initialized():
+
+def assert_initialized() -> None:
     try:
         PoiIdx.assert_initialized()
     except RuntimeError as e:
         raise RuntimeError("PoiIdx not initialized. Call poiidx.init() first.") from e
 
-def init(recreate: bool = False, **kwargs):
+def init(recreate: bool = False, **kwargs) -> None:
     PoiIdx.connect(**kwargs)
     if recreate:
         PoiIdx.drop_schema()
-    
+
     PoiIdx.init_if_new()
 
-def close():
+def close() -> None:
     assert_initialized()
     PoiIdx.close()
 
-def recreate_schema():
+def recreate_schema() -> None:
     assert_initialized()
     PoiIdx.recreate_schema()
 
-def drop_schema():
+def drop_schema() -> None:
     assert_initialized()
     PoiIdx.drop_schema()
 

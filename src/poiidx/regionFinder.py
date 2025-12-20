@@ -6,6 +6,7 @@ from typing import Any, NamedTuple
 import shapely
 from shapely.geometry.base import BaseGeometry
 
+
 class Region(NamedTuple):
     id: str
     name: str

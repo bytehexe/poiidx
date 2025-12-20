@@ -1,6 +1,8 @@
-import pathlib
 import logging
+import pathlib
+
 import requests
+
 from .__about__ import __version__
 
 logger = logging.getLogger(__name__)
@@ -10,7 +12,7 @@ HEADERS = {
 }
 
 class Pbf:
-    def __init__(self, pbf_dir):
+    def __init__(self, pbf_dir) -> None:
         self.pbf_dir = pbf_dir
 
     def get_pbf_filename(self, region_id, region_url):
@@ -18,17 +20,17 @@ class Pbf:
         if pbf_file_name.exists():
             logger.info(f"Using cached PBF file for region {region_id} from {pbf_file_name}")
             return pbf_file_name
-        
+
         # Download PBF file
         self.__download_pbf(region_id, region_url, pbf_file_name)
         return pbf_file_name
 
 
-    def __download_pbf(self, region_key, region_url, pbf_file_name):
+    def __download_pbf(self, region_key, region_url, pbf_file_name) -> None:
         logger.info("Downloading PBF ...")
         with requests.get(region_url, stream=True, headers=HEADERS) as result:
             result.raise_for_status()
             with open(pbf_file_name, "wb") as pbf_file:
                 for chunk in result.iter_content(chunk_size=8192):
                     pbf_file.write(chunk)
-        
+

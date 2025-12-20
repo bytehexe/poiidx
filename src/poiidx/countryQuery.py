@@ -1,10 +1,12 @@
-import requests
 import time
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
-from .country import Country
-from .administrativeBoundary import AdministrativeBoundary
+
+import requests
+
 from .__about__ import __version__
+from .administrativeBoundary import AdministrativeBoundary
+from .country import Country
 
 HEADERS = {
     "User-Agent": f"poiidx/{__version__} (https://github.com/bytehexe/poiidx)"
@@ -16,16 +18,16 @@ _next_allowed_execution = 0.0
 def _rate_limited_get(url: str, headers: dict) -> requests.Response:
     """Perform a rate-limited GET request with automatic retry on 429."""
     global _next_allowed_execution
-    
+
     while True:
         # Wait until we're allowed to make the next request
         now = time.time()
         if now < _next_allowed_execution:
             time.sleep(_next_allowed_execution - now)
-        
+
         # Make the request
         response = requests.get(url, headers=headers)
-        
+
         # Check if we got a 429 (Too Many Requests)
         if response.status_code == 429:
             # Get Retry-After header (can be in seconds or HTTP date)
@@ -45,11 +47,11 @@ def _rate_limited_get(url: str, headers: dict) -> requests.Response:
                 # No Retry-After header, use default backoff
                 _next_allowed_execution = time.time() + 2.0
             continue
-        
+
         # For successful requests, set next allowed execution to 0.2s from now
         if response.status_code == 200:
             _next_allowed_execution = time.time() + 0.2
-        
+
         return response
 
 def r(rank: str) -> int:
@@ -70,7 +72,7 @@ def country_query(admin_with_wikidata: AdministrativeBoundary) -> tuple[str | No
     # Check database first
     if admin_with_wikidata.country and admin_with_wikidata.country.name:
         return admin_with_wikidata.country.name, admin_with_wikidata.country.localized_names
-    
+
     wikidata_id = admin_with_wikidata.wikidata_id
 
     # Check if the entity exists and has a country (P17) property
@@ -81,7 +83,7 @@ def country_query(admin_with_wikidata: AdministrativeBoundary) -> tuple[str | No
     country_id = sorted(data.get("P17", [{}]), key=lambda x: r(x.get("rank", "normal")))[0].get("value", {}).get("content", None)
     if not country_id:
         return None
-    
+
     # Check the database for the country
     country = Country.get_or_none(Country.wikidata_id == country_id)
     if country is not None:
@@ -90,7 +92,7 @@ def country_query(admin_with_wikidata: AdministrativeBoundary) -> tuple[str | No
         admin_with_wikidata.save()
 
         return country.name, country.localized_names
-    
+
     # Fetch the native labels for the country
     url = f"{base_url}/entities/items/{country_id}/statements?property=P1705"
     response = _rate_limited_get(url, headers=HEADERS)
@@ -120,5 +122,5 @@ def country_query(admin_with_wikidata: AdministrativeBoundary) -> tuple[str | No
         c = Country.create(wikidata_id=country_id, name=label, localized_names=label_data)
         admin_with_wikidata.country = c
         admin_with_wikidata.save()
-        
+
         return label, label_data

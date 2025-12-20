@@ -1,15 +1,17 @@
-import poiidx
+import time
+
 import click
 from shapely.geometry import Point
-import time
+
+import poiidx
 
 
 @click.command()
 @click.option('--password-file', type=click.Path(exists=True), help='Path to file containing the database password.', required=True)
 @click.option('--re-init', is_flag=True, help='Re-initialize the database even if it already exists.')
-def run_example(password_file, re_init):
+def run_example(password_file, re_init) -> None:
 
-    with open(password_file, 'r') as f:
+    with open(password_file) as f:
         password = f.read().strip()
 
     poiidx.init(
