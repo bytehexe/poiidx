@@ -58,10 +58,11 @@ sudo -u postgres psql -d poiidx_db -c "CREATE EXTENSION postgis;"
 ## Usage
 
 ```python
-from poiidx import POIIdex
+import poiidx
+from shapely.geometry import Point
 
-# Connect to the database
-poi = POIIdex(
+# Initialize the database connection
+poiidx.init(
     host='localhost',
     database='poiidx_db',
     user='poiidx_user',
@@ -69,10 +70,32 @@ poi = POIIdex(
     port=5432
 )
 
-# The schema is automatically initialized on first connection
+# Find nearest POIs to a point (e.g., Berlin)
+berlin_point = Point(13.4050, 52.5200)
+nearest_pois = poiidx.get_nearest_pois(
+    berlin_point,
+    max_distance=1000,  # meters
+    limit=5
+)
+
+for poi in nearest_pois:
+    print(f"{poi['name']} - Region: {poi['region']}, Rank: {poi['rank']}")
+
+# Get administrative hierarchy for a point
+admin_hierarchy = poiidx.get_administrative_hierarchy(berlin_point)
+for admin in admin_hierarchy:
+    print(f"Level {admin['admin_level']}: {admin['name']}")
+
+# Get administrative hierarchy as a formatted string
+admin_str = poiidx.get_administrative_hierarchy_string(berlin_point)
+print(admin_str)
+
+# Get administrative hierarchy in a specific language (e.g., French)
+admin_str_fr = poiidx.get_administrative_hierarchy_string(berlin_point, lang='fr')
+print(admin_str_fr)
 
 # Close the connection when done
-poi.close()
+poiidx.close()
 ```
 
 ## License
