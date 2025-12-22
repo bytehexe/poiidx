@@ -7,6 +7,8 @@
 
 **poiidx** is a Python library for efficient spatial indexing and querying of Points of Interest (POIs) using PostgreSQL and PostGIS. It enables you to quickly find nearby POIs, retrieve administrative boundaries, and explore geographic hierarchies based on OpenStreetMap data.
 
+📚 **[Read the full documentation](https://bytehexe.github.io/poiidx/)** for detailed guides, tutorials, and API reference.
+
 ## Table of Contents
 
 - [Installation](#installation)
