@@ -36,7 +36,7 @@ dependencies = [
 ]
 
 [project.urls]
-Documentation = "https://github.com/bytehexe/poiidx#readme"
+Documentation = "https://bytehexe.github.io/poiidx/"
 Issues = "https://github.com/bytehexe/poiidx/issues"
 Source = "https://github.com/bytehexe/poiidx"
 
