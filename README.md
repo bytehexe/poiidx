@@ -103,3 +103,17 @@ poiidx.close()
 ## License
 
 `poiidx` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
+
+## Data Sources & Attribution
+
+This project uses data from the following sources:
+
+### OpenStreetMap (via Geofabrik)
+POI and administrative boundary data is sourced from [OpenStreetMap](https://www.openstreetmap.org/), distributed via [Geofabrik](https://www.geofabrik.de/). 
+
+© OpenStreetMap contributors. Data available under the [Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/).
+
+### Wikidata
+When country information is not available in OpenStreetMap data, it is supplemented using [Wikidata](https://www.wikidata.org/).
+
+© Wikidata contributors. Data available under [CC0 1.0 Universal (CC0 1.0) Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/).

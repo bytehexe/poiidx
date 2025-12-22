@@ -100,6 +100,12 @@ This documentation follows the [Diátaxis framework](https://diataxis.fr/):
 
 poiidx is distributed under the [MIT License](https://spdx.org/licenses/MIT.html).
 
-## OpenStreetMap
+## Data Sources & Attribution
+
+### OpenStreetMap
 
 This project uses data from [OpenStreetMap](https://www.openstreetmap.org/), distributed via [Geofabrik](https://www.geofabrik.de/). OpenStreetMap data is © OpenStreetMap contributors and available under the [Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/).
+
+### Wikidata
+
+When country information is not available in OpenStreetMap data, it is supplemented using [Wikidata](https://www.wikidata.org/). Wikidata content is © Wikidata contributors and available under [CC0 1.0 Universal (CC0 1.0) Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/).

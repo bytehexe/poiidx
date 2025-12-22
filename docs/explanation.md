@@ -292,6 +292,17 @@ Administrative boundaries in OSM often include localized names:
 
 poiidx's `get_administrative_hierarchy_string()` uses these tags to provide localized names when available.
 
+### Country Resolution
+
+When country information is not directly available in the OpenStreetMap administrative boundaries, poiidx uses **Wikidata** to resolve country names:
+
+1. Administrative boundaries in OSM often include a `wikidata` tag with the entity ID
+2. poiidx queries the Wikidata API to find the country (P17 property) for that entity
+3. Country names and localized labels are retrieved from Wikidata
+4. Results are cached in the database for future queries
+
+This approach ensures comprehensive country information across different regions, even where OSM data may be incomplete.
+
 ## Database Schema
 
 ### POI Table
@@ -503,11 +514,12 @@ Potential enhancements:
 ## Related Technologies
 
 - **OpenStreetMap**: Source of geographic data
+- **Geofabrik**: OSM data distribution
+- **Wikidata**: Knowledge base for country information when not available in OSM
 - **PostGIS**: Spatial database extension
 - **Shapely**: Python library for geometric objects
 - **Osmium**: Fast OSM data processing
 - **Pyproj**: Coordinate transformations
-- **Geofabrik**: OSM data distribution
 
 ## Further Reading
 
