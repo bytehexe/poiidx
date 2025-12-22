@@ -191,7 +191,7 @@ class PoiIdx:
         cls,
         shape: shapely.geometry.base.BaseGeometry,
         max_distance: float | None = None,
-        limit: int = 1,
+        limit: int | None = None,
         regions: list[str] | None = None,
         rank_range: tuple[int, int] | None = None,
     ) -> list[Poi]:
@@ -200,10 +200,17 @@ class PoiIdx:
         Args:
             shape: Shapely geometry to search from
             max_distance: Optional maximum distance in meters. If None, returns k nearest regardless of distance.
-            limit: Number of nearest POIs to return (k in KNN)
+            limit: Optional number of nearest POIs to return (k in KNN). At least one of limit or max_distance must be provided.
             regions: Optional list of region keys to filter by. If None, searches all regions.
             rank_range: Optional tuple of (min_rank, max_rank) to filter by rank. If None, no rank filtering.
+
+        Raises:
+            ValueError: If neither limit nor max_distance is provided.
         """
+        if limit is None and max_distance is None:
+            raise ValueError(
+                "At least one of 'limit' or 'max_distance' must be provided"
+            )
 
         # Build query - use <-> operator for KNN index search
         query = Poi.select()
@@ -229,7 +236,11 @@ class PoiIdx:
         # Use KNN operator (<->) for efficient nearest neighbor search with index
         query = query.order_by(
             knn(Poi.coordinates, SQL("ST_GeogFromText(%s)", (shape.wkt,)))
-        ).limit(limit)
+        )
+
+        # Apply limit if specified
+        if limit is not None:
+            query = query.limit(limit)
 
         return list(query)
 

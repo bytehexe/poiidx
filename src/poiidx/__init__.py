@@ -41,13 +41,17 @@ def drop_schema() -> None:
 def get_nearest_pois(
     shape: shapely.geometry.base.BaseGeometry,
     buffer: float | None = None,
+    limit: int | None = None,
+    max_distance: float | None = None,
     **kwargs: Any,
 ) -> list[dict[str, Any]]:
     assert_initialized()
     regions = PoiIdx.init_regions_by_shape(shape, buffer=buffer)
     return [
         model_to_dict(poi)
-        for poi in PoiIdx.get_nearest_pois(shape, regions=regions, **kwargs)
+        for poi in PoiIdx.get_nearest_pois(
+            shape, regions=regions, limit=limit, max_distance=max_distance, **kwargs
+        )
     ]
 
 
