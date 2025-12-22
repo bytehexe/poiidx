@@ -1,5 +1,7 @@
 site_name: poiidx
 site_description: Efficient spatial indexing and querying of Points of Interest using PostgreSQL and PostGIS
+repo_url: https://github.com/bytehexe/poiidx
+repo_name: bytehexe/poiidx
 
 theme:
   name: material
