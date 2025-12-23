@@ -188,8 +188,7 @@ class PoiIdx:
 
         if cls.__pbf_cache:  # type: ignore[attr-defined]
             cachedir = (
-                pathlib.Path(platformdirs.user_cache_dir("mkmapdiary", "bytehexe"))
-                / "pbf"
+                pathlib.Path(platformdirs.user_cache_dir("poiidx", "bytehexe")) / "pbf"
             )
             cachedir.mkdir(parents=True, exist_ok=True)
             tempfile_context: Any = nullcontext()
