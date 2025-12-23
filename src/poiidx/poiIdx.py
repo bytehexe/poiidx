@@ -140,8 +140,10 @@ class PoiIdx:
     @classmethod
     def init_region_data(cls, filter_config: list[dict[str, Any]]) -> None:
         # Initialize the Region table with a default system region
-        System.create(system=True, filter_config=json.dumps(filter_config))
-        SchemaHash.create(instance=True, schema_hash=cls.get_schema_hash())
+        s = System.get_or_create(system=True, filter_config=json.dumps(filter_config))
+        s.save()
+        h = SchemaHash.get_or_create(instance=True, schema_hash=cls.get_schema_hash())
+        h.save()
 
         # Download region data
         download_region_data()
