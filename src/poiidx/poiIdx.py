@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import pathlib
@@ -7,7 +8,7 @@ from typing import Any
 
 import platformdirs
 import shapely
-from peewee import SQL
+from peewee import SQL, ProgrammingError
 
 from .administrativeBoundary import AdministrativeBoundary
 from .baseModel import database
@@ -20,13 +21,14 @@ from .poi import Poi
 from .projection import LocalProjection
 from .regionFinder import RegionFinder
 from .scanner import administrative_scan, poi_scan
+from .schemaHash import SchemaHash
 from .system import System
 
 logger = logging.getLogger(__name__)
 
 
 class PoiIdx:
-    TABLES = [Poi, System, AdministrativeBoundary, Country]
+    TABLES = [SchemaHash, Poi, System, AdministrativeBoundary, Country]
 
     @classmethod
     def connect(cls, pbf_cache: bool = True, **kwargs: Any) -> None:
@@ -58,6 +60,45 @@ class PoiIdx:
         cls.init_schema()
 
     @classmethod
+    def get_full_schema_sql(cls, model: Any) -> list[str]:
+        stmts = []
+
+        # Get CREATE TABLE SQL
+        ctx = database.get_sql_context()
+        queries = model._schema._create_table(safe=False).query()
+        for query in queries:
+            sql, params = ctx.sql(query).query()
+            if params:
+                # Format SQL with parameters
+                sql = sql % tuple(repr(p) for p in params)
+            stmts.append(sql)
+
+        # Get index creation SQL
+        for index in model._meta.indexes:
+            sql, params = index.create_sql(model._meta.table_name)
+            if sql is not None:
+                if params:
+                    sql = sql % tuple(repr(p) for p in params)
+                stmts.append(sql)
+
+        return stmts
+
+    @classmethod
+    def get_schema_hash(cls) -> str:
+        schema_sqls = []
+        for table in cls.TABLES:
+            schema_sqls.extend(cls.get_full_schema_sql(table))
+
+        schema_sqls.sort()
+
+        hasher = hashlib.sha256()
+        for sql in schema_sqls:
+            hasher.update(sql.encode("utf-8"))
+        schema_hash = hasher.hexdigest()
+
+        return schema_hash
+
+    @classmethod
     def init_if_new(cls, filter_config: list[dict[str, Any]]) -> None:
         existing_tables = database.get_tables()
         tables_to_create = [
@@ -69,21 +110,33 @@ class PoiIdx:
         if tables_to_create:
             do_recreate = True
         else:
-            system = System.get_or_none(System.system)
-            if system is None:
+            schema_hash = cls.get_schema_hash()
+            try:
+                existing_schema_hash = SchemaHash.get_or_none(SchemaHash.instance)
+            except ProgrammingError:
+                existing_schema_hash = None
+            if (
+                existing_schema_hash is None
+                or existing_schema_hash.schema_hash != schema_hash
+            ):
                 do_recreate = True
             else:
-                if system.filter_config != json.dumps(filter_config):
+                system = System.get_or_none(System.system)
+                if system is None:
                     do_recreate = True
+                else:
+                    if system.filter_config != json.dumps(filter_config):
+                        do_recreate = True
 
         if do_recreate:
             cls.recreate_schema()
             cls.init_region_data(filter_config=filter_config)
 
-    @staticmethod
-    def init_region_data(filter_config: list[dict[str, Any]]) -> None:
+    @classmethod
+    def init_region_data(cls, filter_config: list[dict[str, Any]]) -> None:
         # Initialize the Region table with a default system region
         System.create(system=True, filter_config=json.dumps(filter_config))
+        SchemaHash.create(instance=True, schema_hash=cls.get_schema_hash())
 
         # Download region data
         download_region_data()

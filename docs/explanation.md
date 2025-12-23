@@ -6,6 +6,24 @@ Deep dives into the concepts and architecture of poiidx.
 
 poiidx is designed to solve a common problem in location-based applications: efficiently finding nearby Points of Interest (POIs) from OpenStreetMap data. This section explains the design decisions, architecture, and concepts behind poiidx.
 
+!!! warning "Automatic Schema Management and Data Lifecycle"
+    poiidx implements automatic schema detection to ensure data integrity. On each initialization (`init()` or `init_if_new()`), poiidx:
+    
+    1. Computes a hash of the current database schema (from model definitions)
+    2. Compares it with the stored schema hash in the database
+    3. Checks if the filter configuration has changed
+    4. **Automatically drops and recreates all tables** if any mismatch is detected
+    
+    This means:
+    
+    - Data in the database should be considered **temporary and regeneratable**
+    - Updating the poiidx library may trigger a full data recreation
+    - Changing your filter configuration will trigger a full data recreation
+    - You cannot add custom tables to the poiidx database reliably
+    - The database acts as a managed cache, not persistent storage
+    
+    This design ensures that the data structure always matches the code, preventing schema migration issues and data corruption.
+
 ## Architecture
 
 ### System Components

@@ -20,13 +20,22 @@ poiidx.init(
 ) -> None
 ```
 
+!!! warning "Automatic Data Recreation"
+    Even when `recreate=False`, poiidx will **automatically drop and recreate all data** if it detects:
+    
+    - Schema changes (from library updates)
+    - Filter configuration changes
+    - Missing or corrupted schema metadata
+    
+    All data should be considered temporary.
+
 **Parameters:**
 
 - `filter_config` (list[dict]): List of POI filter configurations. Each dict should contain:
     - `symbol` (str): Symbol category for grouping POIs
     - `description` (str): Human-readable description
     - `filters` (list[dict]): List of OSM tag combinations to match
-- `recreate` (bool, optional): If True, drops and recreates the database schema. Default: False
+- `recreate` (bool, optional): If True, forces immediate drop and recreation of the database schema. Default: False (but automatic recreation may still occur based on schema detection)
 - `**kwargs`: Database connection parameters:
     - `host` (str): Database host
     - `database` (str): Database name

@@ -39,6 +39,10 @@ def run_example(password_file: str, re_init: bool) -> None:
 
     click.echo("Database initialized.")
 
+    # Get schema hash
+    poiidx_schema_hash = poiidx.PoiIdx.get_schema_hash()
+    click.echo(f"POIIdx schema hash: {poiidx_schema_hash}")
+
     # Point for Berlin, Germany
     berlin_point = Point(13.4050, 52.5200)
 

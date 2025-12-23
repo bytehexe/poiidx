@@ -91,6 +91,9 @@ Create a configuration file to specify which types of POIs you want to index. Sa
 
 ## Step 5: Initialize the Database
 
+!!! warning "Database Data is Temporary"
+    poiidx automatically monitors for schema changes (from library updates or filter configuration changes). When it detects that the schema or filter configuration is outdated, it will **automatically drop and recreate all database tables and data**. This ensures consistency but means you should treat the database as a cache that can be regenerated at any time. Never rely on this database for persistent storage of your own data.
+
 Create a Python script to initialize poiidx:
 
 ```python

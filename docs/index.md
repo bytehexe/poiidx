@@ -17,6 +17,9 @@ poiidx is a Python library that makes it easy to work with OpenStreetMap Points 
 - 🌍 **Global coverage** - supports all regions available on Geofabrik
 - 💾 **Efficient storage** - only stores the POI types you need
 
+!!! warning "Database Data is Temporary"
+    poiidx automatically detects schema changes (from model updates or filter configuration changes) and will **drop and recreate all data** when outdated schemas are detected. Do not rely on the database for persistent storage - treat all data as temporary and regeneratable.
+
 ## Quick Example
 
 ```python
