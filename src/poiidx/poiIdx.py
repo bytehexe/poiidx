@@ -107,6 +107,7 @@ class PoiIdx:
             if table._meta.table_name not in existing_tables  # type: ignore[attr-defined]
         ]
         do_recreate = False
+        do_recreate_index = False
         if tables_to_create:
             do_recreate = True
         else:
@@ -127,9 +128,13 @@ class PoiIdx:
                 else:
                     if system.filter_config != json.dumps(filter_config):
                         do_recreate = True
+                    if system.region_index is None:
+                        do_recreate_index = True
 
         if do_recreate:
             cls.recreate_schema()
+            cls.init_region_data(filter_config=filter_config)
+        elif do_recreate_index:
             cls.init_region_data(filter_config=filter_config)
 
     @classmethod
