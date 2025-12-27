@@ -14,7 +14,7 @@ from .projection import LocalProjection
 logger = logging.getLogger(__name__)
 
 
-def encode_osm_id(obj: Any) -> str:
+def encode_osm_id(obj_id: int, type_str: str) -> str:
     """Get the original OSM ID from an osmium object with type prefix.
 
     When using .with_areas(), osmium converts way/relation IDs to area IDs:
@@ -23,8 +23,6 @@ def encode_osm_id(obj: Any) -> str:
 
     Returns a string with type prefix (e.g., "r62422", "n123", "w456").
     """
-    type_str = obj.type_str()
-    obj_id = obj.id
 
     if type_str == "n":
         # Nodes keep their original ID
@@ -70,7 +68,7 @@ def administrative_scan(pbf_path: str, region_key: str) -> None:
             # Store administrative boundary in the database
             # Assuming an AdministrativeBoundary model exists
             AdministrativeBoundary.create(
-                osm_id=encode_osm_id(obj),
+                osm_id=encode_osm_id(obj.id, obj.type_str()),
                 name=name,
                 region=region_key,
                 admin_level=admin_level,
@@ -78,6 +76,31 @@ def administrative_scan(pbf_path: str, region_key: str) -> None:
                 wikidata_id=obj.tags.get("wikidata"),
                 localized_names=localized_names,
             )
+
+
+def process_admin_centre_relations(pbf_path: str) -> None:
+    processor = osmium.FileProcessor(pbf_path)
+    processor.with_filter(osmium.filter.TagFilter(("boundary", "administrative")))
+    processor.with_filter(osmium.filter.KeyFilter("name"))
+    processor.with_filter(osmium.filter.KeyFilter("admin_level"))
+    processor.with_filter(osmium.filter.EntityFilter(osmium.osm.RELATION))
+
+    with db.atomic():
+        for obj in processor:
+            for member in obj.members:  # type: ignore
+                if member.role == "admin_centre":
+                    admin_level = obj.tags.get("admin_level")
+                    member_ref_id = encode_osm_id(member.ref, member.type)
+
+                    # Update the corresponding POI entry
+                    poi = Poi.get_or_none(Poi.osm_id == member_ref_id)
+                    if poi:
+                        try:
+                            capital_level = int(admin_level)  # type: ignore
+                        except ValueError:
+                            capital_level = None
+                        poi.capital = capital_level
+                        poi.save()
 
 
 def poi_scan(
@@ -127,7 +150,7 @@ def poi_scan(
                 continue
 
             type_str = obj.type_str()
-            poi_id = encode_osm_id(obj)
+            poi_id = encode_osm_id(obj.id, type_str)
 
             if type_str == "n":
                 geom = shapely.Point(obj.lon, obj.lat)  # type: ignore[union-attr]
@@ -155,6 +178,25 @@ def poi_scan(
             # Prepare localization data if available
             localized_names = extract_localized_names(obj)
 
+            capital_level = obj.tags.get("capital")
+            if capital_level == "yes":
+                # Try admin_level
+                admin_level = obj.tags.get("admin_level")
+                if admin_level is not None:
+                    try:
+                        capital_level_int = (
+                            int(admin_level) if admin_level is not None else None
+                        )
+                    except ValueError:
+                        pass
+            elif capital_level is not None:
+                try:
+                    capital_level_int = int(capital_level)
+                except ValueError:
+                    capital_level_int = None
+            else:
+                capital_level_int = None
+
             Poi.create(
                 osm_id=poi_id,
                 name=poi_name,
@@ -165,6 +207,7 @@ def poi_scan(
                 coordinates=geom,
                 symbol=filter_item["symbol"],
                 localized_names=localized_names,
+                capital=capital_level_int,
             )
 
 

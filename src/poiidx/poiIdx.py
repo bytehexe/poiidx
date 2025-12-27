@@ -20,7 +20,7 @@ from .pbf import Pbf
 from .poi import Poi
 from .projection import LocalProjection
 from .regionFinder import RegionFinder
-from .scanner import administrative_scan, poi_scan
+from .scanner import administrative_scan, poi_scan, process_admin_centre_relations
 from .schemaHash import SchemaHash
 from .system import System
 
@@ -140,12 +140,19 @@ class PoiIdx:
     @classmethod
     def init_region_data(cls, filter_config: list[dict[str, Any]]) -> None:
         # Initialize the Region table with a default system region
-        s, _ = System.get_or_create(system=True)
-        s.filter_config = json.dumps(filter_config)
+
+        filter_config_json = json.dumps(filter_config)
+        s, _ = System.get_or_create(
+            system=True, defaults={"filter_config": filter_config_json}
+        )
+        s.filter_config = filter_config_json
         s.save()
 
-        h, _ = SchemaHash.get_or_create(instance=True)
-        h.schema_hash = cls.get_schema_hash()
+        schema_hash = cls.get_schema_hash()
+        h, _ = SchemaHash.get_or_create(
+            instance=True, defaults={"schema_hash": schema_hash}
+        )
+        h.schema_hash = schema_hash
         h.save()
 
         # Download region data
@@ -226,6 +233,7 @@ class PoiIdx:
 
             poi_scan(filter_config, str(pbf_file), region_id)
             administrative_scan(str(pbf_file), region_id)
+            process_admin_centre_relations(str(pbf_file))
 
     @classmethod
     def init_regions_by_shape(

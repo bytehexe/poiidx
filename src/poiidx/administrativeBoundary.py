@@ -7,7 +7,7 @@ from .ext import GeographyField
 
 
 class AdministrativeBoundary(BaseModel):
-    osm_id = CharField()
+    osm_id = CharField(index=True)
     name = CharField()
     region = CharField(index=True)
     admin_level = IntegerField(index=True)

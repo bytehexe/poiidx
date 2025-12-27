@@ -6,7 +6,7 @@ from .ext import GeographyField
 
 
 class Poi(BaseModel):
-    osm_id = CharField()
+    osm_id = CharField(index=True)
     name = CharField()
     region = CharField(index=True)
     coordinates = GeographyField(index=True, index_type="SPGIST")
@@ -15,3 +15,4 @@ class Poi(BaseModel):
     rank = IntegerField(index=True)
     symbol = CharField(null=True)
     localized_names = BinaryJSONField(null=True)
+    capital = IntegerField(null=True)  # Admin Level; null = not applicable
