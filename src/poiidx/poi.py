@@ -15,4 +15,5 @@ class Poi(BaseModel):
     rank = IntegerField(index=True)
     symbol = CharField(null=True)
     localized_names = BinaryJSONField(null=True)
-    capital = IntegerField(null=True)  # Admin Level; null = not applicable
+    admin_level = IntegerField(null=True)  # Admin Level; null = not applicable
+    capital_level = IntegerField(null=True)  # Capital Level; null = not applicable

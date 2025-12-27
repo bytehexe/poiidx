@@ -1,3 +1,5 @@
+import logging
+
 import requests
 
 from .__about__ import __version__
@@ -5,8 +7,12 @@ from .system import System
 
 HEADERS = {"User-Agent": f"poiidx/{__version__} (https://github.com/bytehexe/poiidx)"}
 
+logger = logging.getLogger(__name__)
+
 
 def download_region_data() -> None:
+    logger.debug("Downloading Geofabrik region index")
+
     response = requests.get(
         "https://download.geofabrik.de/index-v1.json", headers=HEADERS
     )

@@ -1,3 +1,4 @@
+import logging
 import pathlib
 from typing import Any
 
@@ -8,6 +9,8 @@ from coordinate_parser import parse_coordinate
 from shapely.geometry import Point
 
 import poiidx
+
+logger = logging.getLogger(__name__)
 
 
 def load_config(config_path: str) -> dict[str, Any]:
@@ -41,12 +44,25 @@ def get_default_config_path() -> str:
     is_flag=True,
     help="Re-initialize the database even if it already exists",
 )
+@click.option("-v", "--verbose", count=True, help="Increase verbosity level")
 @click.pass_context
-def cli(ctx: click.Context, config: str, re_init: bool) -> None:
+def cli(ctx: click.Context, config: str, re_init: bool, verbose: int) -> None:
     """poiidx command-line interface."""
     ctx.ensure_object(dict)
     ctx.obj["config"] = config
     ctx.obj["re_init"] = re_init
+    ctx.obj["verbose"] = verbose
+
+    if verbose == 1:
+        logging.basicConfig(level=logging.INFO)
+    elif verbose == 2:
+        # increase logging to debug level, only for poiidx module
+        logging.getLogger("poiidx").setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.INFO)
+    elif verbose >= 3:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.WARNING)
 
 
 @cli.command()

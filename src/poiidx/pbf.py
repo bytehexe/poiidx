@@ -23,6 +23,9 @@ class Pbf:
             return pbf_file_name
 
         # Download PBF file
+        logger.info(
+            f"PBF file for region {region_id} not found in cache. Downloading..."
+        )
         self.__download_pbf(region_id, region_url, pbf_file_name)
         return pbf_file_name
 

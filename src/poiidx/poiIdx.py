@@ -141,6 +141,8 @@ class PoiIdx:
     def init_region_data(cls, filter_config: list[dict[str, Any]]) -> None:
         # Initialize the Region table with a default system region
 
+        logger.debug("Initializing region data")
+
         filter_config_json = json.dumps(filter_config)
         s, _ = System.get_or_create(
             system=True, defaults={"filter_config": filter_config_json}
@@ -209,9 +211,11 @@ class PoiIdx:
             )
             cachedir.mkdir(parents=True, exist_ok=True)
             tempfile_context: Any = nullcontext()
+            logger.debug(f"Using PBF cache directory: {cachedir}")
         else:
             tempfile_context = tempfile.TemporaryDirectory()
             cachedir = pathlib.Path(tempfile_context.name)  # type: ignore[attr-defined]
+            logger.debug("Using temporary PBF cache directory")
 
         # Get the filter config from the System table
         system = System.get_or_none(System.system)
@@ -241,6 +245,8 @@ class PoiIdx:
     ) -> list[Any]:
         """Initialize POIs and administrative boundaries for a given region key."""
 
+        logger.debug("Initializing regions by shape")
+
         if buffer is not None:
             lp = LocalProjection(shape)
             local_shape = lp.to_local(shape)
@@ -252,7 +258,10 @@ class PoiIdx:
             return []
         for region in regions:
             if not cls.has_region_data(region.id):
+                logger.debug(f"Initializing region {region.id}")
                 cls.initialize_pois_for_region(region.id)
+            else:
+                logger.debug(f"Region {region.id} already initialized")
 
         return [region.id for region in regions]
 

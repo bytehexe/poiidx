@@ -44,6 +44,8 @@ def encode_osm_id(obj_id: int, type_str: str) -> str:
 
 
 def administrative_scan(pbf_path: str, region_key: str) -> None:
+    logger.debug("Starting administrative boundary scan")
+
     processor = osmium.FileProcessor(pbf_path)
     processor.with_filter(osmium.filter.TagFilter(("boundary", "administrative")))
     processor.with_filter(osmium.filter.KeyFilter("name"))
@@ -79,6 +81,8 @@ def administrative_scan(pbf_path: str, region_key: str) -> None:
 
 
 def process_admin_centre_relations(pbf_path: str) -> None:
+    logger.debug("Processing admin_centre relations")
+
     processor = osmium.FileProcessor(pbf_path)
     processor.with_filter(osmium.filter.TagFilter(("boundary", "administrative")))
     processor.with_filter(osmium.filter.KeyFilter("name"))
@@ -91,21 +95,37 @@ def process_admin_centre_relations(pbf_path: str) -> None:
                 if member.role == "admin_centre":
                     admin_level = obj.tags.get("admin_level")
                     member_ref_id = encode_osm_id(member.ref, member.type)
+                    obj_id = encode_osm_id(obj.id, obj.type_str())
 
                     # Update the corresponding POI entry
-                    poi = Poi.get_or_none(Poi.osm_id == member_ref_id)
-                    if poi:
-                        try:
-                            capital_level = int(admin_level)  # type: ignore
-                        except ValueError:
-                            capital_level = None
-                        poi.capital = capital_level
-                        poi.save()
+                    for poi_id in [member_ref_id, obj_id]:
+                        poi = Poi.get_or_none(Poi.osm_id == poi_id)
+                        if poi:
+                            try:
+                                admin_level_int = int(admin_level)  # type: ignore
+                            except ValueError:
+                                admin_level_int = None
+
+                            if (
+                                admin_level_int is not None
+                                and (
+                                    poi.admin_level is None
+                                    or admin_level_int < poi.admin_level
+                                )
+                                and (
+                                    poi.capital_level is None
+                                    or admin_level_int > poi.capital_level
+                                )
+                            ):
+                                poi.admin_level = admin_level_int
+                                poi.save()
 
 
 def poi_scan(
     filter_config: list[dict[str, Any]], pbf_path: str, region_key: str
 ) -> None:
+    logger.debug("Starting POI scan")
+
     all_filters_keys = set()
     for filter_item in filter_config:
         for filter_expression in filter_item["filters"]:
@@ -178,24 +198,21 @@ def poi_scan(
             # Prepare localization data if available
             localized_names = extract_localized_names(obj)
 
+            admin_level = obj.tags.get("admin_level")
+            admin_level_int = None
+            if admin_level is not None:
+                try:
+                    admin_level_int = int(admin_level)
+                except ValueError:
+                    pass
+
+            capital_level_int = None
             capital_level = obj.tags.get("capital")
-            if capital_level == "yes":
-                # Try admin_level
-                admin_level = obj.tags.get("admin_level")
-                if admin_level is not None:
-                    try:
-                        capital_level_int = (
-                            int(admin_level) if admin_level is not None else None
-                        )
-                    except ValueError:
-                        pass
-            elif capital_level is not None:
+            if capital_level is not None:
                 try:
                     capital_level_int = int(capital_level)
                 except ValueError:
-                    capital_level_int = None
-            else:
-                capital_level_int = None
+                    pass
 
             Poi.create(
                 osm_id=poi_id,
@@ -207,7 +224,8 @@ def poi_scan(
                 coordinates=geom,
                 symbol=filter_item["symbol"],
                 localized_names=localized_names,
-                capital=capital_level_int,
+                admin_level=admin_level_int,
+                capital_level=capital_level_int,
             )
 
 
