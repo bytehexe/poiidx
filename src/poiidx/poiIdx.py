@@ -336,8 +336,10 @@ class PoiIdx:
             max_admin_level: Optional maximum admin level to include (e.g., 6 for county level)
         """
 
-        query = AdministrativeBoundary.select().where(
-            SQL("ST_Covers(coordinates, ST_GeogFromText(%s))", (shape.wkt,))
+        query = (
+            AdministrativeBoundary.select()
+            .where(SQL("ST_Covers(coordinates, ST_GeogFromText(%s))", (shape.wkt,)))
+            .order_by(AdministrativeBoundary.admin_level.desc())
         )
 
         hierarchy = list(query)
