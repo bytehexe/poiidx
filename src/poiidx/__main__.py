@@ -36,11 +36,17 @@ def get_default_config_path() -> str:
     default=get_default_config_path,
     help="Path to configuration file",
 )
+@click.option(
+    "--re-init",
+    is_flag=True,
+    help="Re-initialize the database even if it already exists",
+)
 @click.pass_context
-def cli(ctx: click.Context, config: str) -> None:
+def cli(ctx: click.Context, config: str, re_init: bool) -> None:
     """poiidx command-line interface."""
     ctx.ensure_object(dict)
     ctx.obj["config"] = config
+    ctx.obj["re_init"] = re_init
 
 
 @cli.command()
@@ -74,7 +80,7 @@ def poi(
     db_config = load_config(ctx.obj["config"])
 
     # Initialize poiidx
-    poiidx.init(**db_config)
+    poiidx.init(**db_config, recreate=ctx.obj["re_init"])
 
     try:
         # Parse coordinates
@@ -123,7 +129,7 @@ def admin(ctx: click.Context, lat: str, lon: str, short: bool) -> None:
     db_config = load_config(ctx.obj["config"])
 
     # Initialize poiidx
-    poiidx.init(**db_config)
+    poiidx.init(**db_config, recreate=ctx.obj["re_init"])
 
     try:
         # Parse coordinates
