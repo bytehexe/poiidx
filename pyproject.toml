@@ -33,7 +33,11 @@ dependencies = [
   "platformdirs",
   "osmium",
   "pyproj",
+  "coordinate-parser",
 ]
+
+[project.scripts]
+poiidx-cli = "poiidx.__main__:cli"
 
 [project.urls]
 Documentation = "https://bytehexe.github.io/poiidx/"
