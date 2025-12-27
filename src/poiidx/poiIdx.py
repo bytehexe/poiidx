@@ -316,18 +316,19 @@ class PoiIdx:
 
     @classmethod
     def get_administrative_hierarchy(
-        cls, shape: shapely.geometry.base.BaseGeometry
+        cls,
+        shape: shapely.geometry.base.BaseGeometry,
+        max_admin_level: int | None = None,
     ) -> list[AdministrativeBoundary]:
         """Get administrative boundaries containing the given shape.
 
         Args:
             shape: Shapely geometry to search from
+            max_admin_level: Optional maximum admin level to include (e.g., 6 for county level)
         """
 
-        query = (
-            AdministrativeBoundary.select()
-            .where(SQL("ST_Covers(coordinates, ST_GeogFromText(%s))", (shape.wkt,)))
-            .order_by(AdministrativeBoundary.admin_level.desc())
+        query = AdministrativeBoundary.select().where(
+            SQL("ST_Covers(coordinates, ST_GeogFromText(%s))", (shape.wkt,))
         )
 
         hierarchy = list(query)
@@ -358,18 +359,30 @@ class PoiIdx:
                 )
                 hierarchy.append(country_admin)
 
+        if max_admin_level is not None:
+            hierarchy = [
+                admin for admin in hierarchy if admin.admin_level <= max_admin_level
+            ]
+
         return hierarchy
 
     @classmethod
     def get_administrative_hierarchy_string(
-        cls, shape: shapely.geometry.base.BaseGeometry, lang: str | None = None
+        cls,
+        shape: shapely.geometry.base.BaseGeometry,
+        lang: str | None = None,
+        max_admin_level: int | None = None,
     ) -> str:
         """Get administrative boundaries containing the given shape as a formatted string.
 
         Args:
             shape: Shapely geometry to search from
+            lang: Optional language code for localized names
+            max_admin_level: Optional maximum admin level to include
         """
-        admin_boundaries = cls.get_administrative_hierarchy(shape)
+        admin_boundaries = cls.get_administrative_hierarchy(
+            shape, max_admin_level=max_admin_level
+        )
         items = []
         last_name = None
         for admin in admin_boundaries:

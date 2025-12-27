@@ -117,8 +117,15 @@ def poi(
     is_flag=True,
     help="Return short string representation instead of full YAML",
 )
+@click.option(
+    "--max-admin-level",
+    type=int,
+    help="Maximum administrative level to include (e.g., 6 for county level)",
+)
 @click.pass_context
-def admin(ctx: click.Context, lat: str, lon: str, short: bool) -> None:
+def admin(
+    ctx: click.Context, lat: str, lon: str, short: bool, max_admin_level: int | None
+) -> None:
     """Query administrative boundaries at the given location.
 
     Coordinates can be provided in various formats:
@@ -144,11 +151,15 @@ def admin(ctx: click.Context, lat: str, lon: str, short: bool) -> None:
 
         if short:
             # Use string representation
-            result = poiidx.get_administrative_hierarchy_string(point)
+            result = poiidx.get_administrative_hierarchy_string(
+                point, max_admin_level=max_admin_level
+            )
             click.echo(result)
         else:
             # Return full YAML
-            hierarchy = poiidx.get_administrative_hierarchy(point)
+            hierarchy = poiidx.get_administrative_hierarchy(
+                point, max_admin_level=max_admin_level
+            )
 
             # Clean up the output
             for level in hierarchy:

@@ -56,12 +56,17 @@ def get_nearest_pois(
 
 
 def get_administrative_hierarchy(
-    shape: shapely.geometry.base.BaseGeometry, buffer: float | None = None
+    shape: shapely.geometry.base.BaseGeometry,
+    buffer: float | None = None,
+    max_admin_level: int | None = None,
 ) -> list[dict[str, Any]]:
     assert_initialized()
     PoiIdx.init_regions_by_shape(shape, buffer=buffer)
     return [
-        model_to_dict(admin) for admin in PoiIdx.get_administrative_hierarchy(shape)
+        model_to_dict(admin)
+        for admin in PoiIdx.get_administrative_hierarchy(
+            shape, max_admin_level=max_admin_level
+        )
     ]
 
 
@@ -69,7 +74,10 @@ def get_administrative_hierarchy_string(
     shape: shapely.geometry.base.BaseGeometry,
     lang: str | None = None,
     buffer: float | None = None,
+    max_admin_level: int | None = None,
 ) -> str:
     assert_initialized()
     PoiIdx.init_regions_by_shape(shape, buffer=buffer)
-    return PoiIdx.get_administrative_hierarchy_string(shape, lang=lang)
+    return PoiIdx.get_administrative_hierarchy_string(
+        shape, lang=lang, max_admin_level=max_admin_level
+    )
