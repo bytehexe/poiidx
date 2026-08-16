@@ -3,6 +3,7 @@ import json
 import logging
 import pathlib
 import tempfile
+import threading
 from contextlib import nullcontext
 from typing import Any
 
@@ -25,6 +26,19 @@ from .schemaHash import SchemaHash
 from .system import System
 
 logger = logging.getLogger(__name__)
+
+# Ingesting a region writes to shared state (the PBF cache and the region's rows), so
+# concurrent callers must not ingest the same region twice. Locks are per region, so
+# unrelated regions still ingest in parallel. This guards threads within one process,
+# which is what consumers like doit's `--parallel-type=thread` produce; separate
+# processes are not covered.
+_region_locks: dict[str, threading.Lock] = {}
+_region_locks_guard = threading.Lock()
+
+
+def _region_lock(region_key: str) -> threading.Lock:
+    with _region_locks_guard:
+        return _region_locks.setdefault(region_key, threading.Lock())
 
 
 class PoiIdx:
@@ -235,9 +249,12 @@ class PoiIdx:
                 f"Initialized POIs for region {region_key} from PBF file {pbf_file}"
             )
 
-            poi_scan(filter_config, str(pbf_file), region_id)
-            administrative_scan(str(pbf_file), region_id)
-            process_admin_centre_relations(str(pbf_file))
+            # All or nothing: a crash part-way through must not leave rows behind,
+            # because has_region_data would then treat the region as fully ingested.
+            with database.atomic():
+                poi_scan(filter_config, str(pbf_file), region_id)
+                administrative_scan(str(pbf_file), region_id)
+                process_admin_centre_relations(str(pbf_file))
 
     @classmethod
     def init_regions_by_shape(
@@ -257,11 +274,14 @@ class PoiIdx:
         if not regions:
             return []
         for region in regions:
-            if not cls.has_region_data(region.id):
-                logger.debug(f"Initializing region {region.id}")
-                cls.initialize_pois_for_region(region.id)
-            else:
-                logger.debug(f"Region {region.id} already initialized")
+            with _region_lock(region.id):
+                # Re-check inside the lock: another thread may have ingested the
+                # region while we were waiting for it.
+                if not cls.has_region_data(region.id):
+                    logger.debug(f"Initializing region {region.id}")
+                    cls.initialize_pois_for_region(region.id)
+                else:
+                    logger.debug(f"Region {region.id} already initialized")
 
         return [region.id for region in regions]
 

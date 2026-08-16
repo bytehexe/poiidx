@@ -121,7 +121,7 @@ Data Source: OpenStreetMap via Geofabrik (downloads on-demand)
 : Downloads regional OSM extracts (PBF files) from Geofabrik's servers on-demand when a region is first queried.
 
 **PBF Handler**
-: Manages local cache of PBF files in `~/.cache/poiidx/` and provides access for scanning.
+: Manages local cache of PBF files in `~/.cache/poiidx/` and provides access for scanning. Downloads land in a temporary file and are renamed into place only once complete and verified against Geofabrik's published md5, so an interrupted download never leaves a corrupt file in the cache.
 
 **Scanner (poi_scan, administrative_scan)**
 : Uses Osmium library to parse PBF files, filter OSM data based on tags, and extract POIs and administrative boundaries.
@@ -516,8 +516,16 @@ On-demand loading provides:
 
 ### Concurrency
 
-- Database connections are not thread-safe by default
-- Use connection pooling for multi-threaded applications
+- Peewee opens a separate connection per thread (`thread_safe=True`), so queries from
+  multiple threads are safe
+- Region ingestion is serialized per region within a process: if two threads query the
+  same uningested region, one downloads and scans it while the other waits, then sees
+  the finished result
+- Ingestion is transactional — a region is either fully ingested or not at all, so an
+  interrupted scan cannot leave a region looking complete
+- Separate *processes* are not coordinated. Two processes ingesting the same region at
+  once will each download and scan it, producing duplicate rows. Ingest regions from a
+  single process if you run poiidx in a multi-process worker pool.
 
 ## Future Directions
 
