@@ -376,6 +376,31 @@ with poiidx_connection('poi_filters.yaml',
     pois = poiidx.get_nearest_pois(point, limit=5)
 ```
 
+## Managing Regions
+
+### How to Pre-fetch a Region
+
+Queries download regions lazily, which can block for minutes the first time. Fetch ahead of time instead:
+
+```python
+import poiidx
+from shapely.geometry import Point
+
+poiidx.import_region("Bremen")                      # by name or Geofabrik id
+poiidx.import_regions_at(Point(8.8, 53.1))          # whatever poiidx would use here
+poiidx.download_region("germany")                   # PBF only, import later
+```
+
+`download_*` needs the default `pbf_cache=True`.
+
+### How to See Which Regions Cover a Point
+
+```python
+for region in poiidx.list_regions(Point(8.8, 53.1)):
+    print(region["id"], "used" if region["used"] else "unused",
+          "imported" if region["imported"] else "not imported")
+```
+
 ## Troubleshooting
 
 ### How to Check if PostGIS is Installed

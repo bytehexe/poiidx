@@ -115,7 +115,7 @@ Data Source: OpenStreetMap via Geofabrik (downloads on-demand)
 : Central orchestrator that manages database connections, schema initialization, region detection, and coordinates data loading.
 
 **RegionFinder**
-: Spatial index for efficiently determining which Geofabrik regions contain a query point. Uses a serialized R-tree stored in the System table.
+: Chooses which Geofabrik regions to load for a shape. It greedily takes the smallest region that covers part of the remaining shape until nothing is left, so a large region such as DACH can contain a point yet never be used. `list_regions()` shows both the candidates and the ones actually used.
 
 **Geofabrik Downloader**
 : Downloads regional OSM extracts (PBF files) from Geofabrik's servers on-demand when a region is first queried.
