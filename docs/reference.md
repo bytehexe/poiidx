@@ -225,6 +225,8 @@ poiidx.list_regions(
 
 Without `shape`, every region that has a PBF download is returned, all with `used=False`. With `shape`, every region intersecting the (optionally buffered) shape is returned, smallest first. `used` is `True` for the regions poiidx would actually load for that shape. A large region such as DACH can contain a point and still be unused, because a smaller region already covers it.
 
+`buffer` is in meters and applies to every shape-based region function and query: `None` or `0` mean no buffer, a negative value raises `ValueError`.
+
 **Returns:** list of dicts with keys `id` (str), `name` (str), `url` (str), `used` (bool), `downloaded` (bool, PBF is in the persistent cache; always `False` with `pbf_cache=False`), `imported` (bool, the region has POIs or administrative boundaries in the database). All five region functions return this shape.
 
 ```python
@@ -247,9 +249,11 @@ poiidx.download_region(name_or_id: str) -> list[dict[str, Any]]
 poiidx.import_region(name_or_id: str) -> list[dict[str, Any]]
 ```
 
+Queries only load the regions poiidx selects for their shape, so importing a larger region by name does not pre-fetch for them and can duplicate data when a nested region is imported later. To pre-fetch for queries use `import_regions_at()`.
+
 `download_region` stores the PBF in the cache without importing it. `import_region` downloads if necessary and imports; importing an already imported region does nothing.
 
-An exact id match wins; otherwise names are matched case-insensitively. **Raises** `ValueError` for an empty value, an unknown value, or a name shared by several regions (the message lists the ids). `download_region` **raises** `RuntimeError` when connected with `pbf_cache=False`. The result has one element, with `used=False`.
+An exact id match wins; otherwise names are matched case-insensitively. **Raises** `ValueError` for an empty value, an unknown value, or a name shared by several regions (the message lists the ids). `download_region` **raises** `RuntimeError` when connected with `pbf_cache=False`; that check runs before the lookup, so it wins over a `ValueError`. The result has one element, with `used=False`.
 
 ---
 

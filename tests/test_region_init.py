@@ -188,3 +188,27 @@ def test_import_region_skips_a_region_that_is_already_imported(
     PoiIdx.import_region("bremen")
 
     assert calls == []
+
+
+def test_buffered_shape_near_the_antimeridian_stays_valid() -> None:
+    """Fiji: the buffer crosses 180 degrees and must not wrap into a global sliver."""
+    fiji = Point(179.9, -17)
+
+    result = PoiIdx.buffered_shape(fiji, 20_000)
+
+    assert result.is_valid
+    min_x, _, max_x, _ = result.bounds
+    assert min_x < -179.5 and max_x > 179.5  # both sides of the line...
+    assert result.contains(fiji)
+    assert result.contains(Point(-179.95, -17))  # ...and the far side is covered
+    assert result.area < 1  # a ~0.4 x 0.4 degree patch, not the whole globe
+
+
+def test_buffered_shape_with_zero_buffer_is_the_shape() -> None:
+    """buffer=0 means no buffer; a zero-width buffer of a point is an empty polygon."""
+    assert PoiIdx.buffered_shape(SHAPE, 0) is SHAPE
+
+
+def test_buffered_shape_rejects_a_negative_buffer() -> None:
+    with pytest.raises(ValueError, match="must not be negative"):
+        PoiIdx.buffered_shape(SHAPE, -1)

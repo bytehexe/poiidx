@@ -386,12 +386,19 @@ Queries download regions lazily, which can block for minutes the first time. Fet
 import poiidx
 from shapely.geometry import Point
 
-poiidx.import_region("Bremen")                      # by name or Geofabrik id
-poiidx.import_regions_at(Point(8.8, 53.1))          # whatever poiidx would use here
+poiidx.import_regions_at(Point(8.8, 53.1))          # exactly what a query here would load
+poiidx.import_region("Bremen")                      # one region, by name or Geofabrik id
 poiidx.download_region("germany")                   # PBF only, import later
 ```
 
 `download_*` needs the default `pbf_cache=True`.
+
+!!! warning
+    Queries load the regions poiidx *selects* for their shape (see `list_regions()`), not
+    every region that contains it. To pre-fetch for queries, use `import_regions_at()` with
+    the same shape and the same `buffer` you query with. Importing a larger region by name
+    (for example `germany`) does not stop a later query from also importing the smaller
+    region it selects (`bremen`), and the nested region's POIs and boundaries are then stored twice.
 
 ### How to See Which Regions Cover a Point
 

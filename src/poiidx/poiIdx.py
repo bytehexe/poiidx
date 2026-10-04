@@ -7,8 +7,12 @@ import threading
 from contextlib import nullcontext
 from typing import Any
 
+import numpy as np
 import platformdirs
 import shapely
+import shapely.affinity
+import shapely.geometry
+import shapely.ops
 from peewee import SQL, ProgrammingError
 
 from .administrativeBoundary import AdministrativeBoundary
@@ -323,12 +327,37 @@ class PoiIdx:
     def buffered_shape(
         shape: shapely.geometry.base.BaseGeometry, buffer: float | None
     ) -> shapely.geometry.base.BaseGeometry:
-        """Return the convex hull of the shape widened by `buffer` meters (WGS84 in/out)."""
-        if buffer is None:
+        """Return the convex hull of the shape widened by `buffer` meters (WGS84 in/out).
+
+        None or 0 mean "no buffer" and return the shape unchanged. A zero-width
+        buffer of a point or line would be an empty polygon that selects no regions.
+        """
+        if buffer is not None and buffer < 0:
+            raise ValueError("buffer must not be negative")
+        if not buffer:
             return shape
         lp = LocalProjection(shape)
         local_shape = lp.to_local(shape)
-        return lp.to_wgs(local_shape.convex_hull.buffer(buffer))
+        wgs_shape = lp.to_wgs(local_shape.convex_hull.buffer(buffer))
+
+        # The projection wraps longitudes into [-180, 180], which tears a buffer that
+        # crosses the antimeridian into an invalid, globe-spanning polygon. Unwrap
+        # around the shape's own longitude, then fold the overflow back into range.
+        center = shape.centroid.x
+
+        def unwrap(x: Any, y: Any, z: Any = None) -> tuple[Any, ...]:
+            x = center + (np.asarray(x) - center + 180) % 360 - 180
+            return (x, np.asarray(y))
+
+        unwrapped = shapely.ops.transform(unwrap, wgs_shape)
+        world = shapely.geometry.box(-180, -90, 180, 90)
+        return shapely.union_all(
+            [
+                unwrapped.intersection(world),
+                shapely.affinity.translate(unwrapped, xoff=-360).intersection(world),
+                shapely.affinity.translate(unwrapped, xoff=360).intersection(world),
+            ]
+        )
 
     @classmethod
     def import_region(cls, region_id: str) -> None:
