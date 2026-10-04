@@ -81,3 +81,35 @@ def get_administrative_hierarchy_string(
     return PoiIdx.get_administrative_hierarchy_string(
         shape, lang=lang, max_admin_level=max_admin_level
     )
+
+
+def list_regions(
+    shape: shapely.geometry.base.BaseGeometry | None = None,
+    buffer: float | None = None,
+) -> list[dict[str, Any]]:
+    assert_initialized()
+    return PoiIdx.list_regions(shape, buffer)
+
+
+def download_region(name_or_id: str) -> list[dict[str, Any]]:
+    assert_initialized()
+    return PoiIdx.fetch_named(name_or_id, import_=False)
+
+
+def import_region(name_or_id: str) -> list[dict[str, Any]]:
+    assert_initialized()
+    return PoiIdx.fetch_named(name_or_id, import_=True)
+
+
+def download_regions_at(
+    shape: shapely.geometry.base.BaseGeometry, buffer: float | None = None
+) -> list[dict[str, Any]]:
+    assert_initialized()
+    return PoiIdx.fetch_at(shape, buffer, import_=False)
+
+
+def import_regions_at(
+    shape: shapely.geometry.base.BaseGeometry, buffer: float | None = None
+) -> list[dict[str, Any]]:
+    assert_initialized()
+    return PoiIdx.fetch_at(shape, buffer, import_=True)

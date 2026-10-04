@@ -343,6 +343,37 @@ class PoiIdx:
             cls.initialize_pois_for_region(region_id)
 
     @classmethod
+    def _fetch(cls, region: Region, import_: bool) -> None:
+        if import_:
+            cls.import_region(region.id)
+        else:
+            cls.download_region_pbf(region)
+
+    @classmethod
+    def fetch_named(cls, name_or_id: str, import_: bool) -> list[dict[str, Any]]:
+        """Download (or import) one region looked up by id or name."""
+        if not import_:
+            cls._require_cache_dir()  # fail before touching the network
+        region = cls.get_finder().lookup(name_or_id)
+        cls._fetch(region, import_)
+        return [cls.region_info(region, used=False)]
+
+    @classmethod
+    def fetch_at(
+        cls,
+        shape: shapely.geometry.base.BaseGeometry,
+        buffer: float | None,
+        import_: bool,
+    ) -> list[dict[str, Any]]:
+        """Download (or import) every region the finder selects for the shape."""
+        if not import_:
+            cls._require_cache_dir()
+        regions = cls.find_regions_by_shape(cls.buffered_shape(shape, buffer))
+        for region in regions:
+            cls._fetch(region, import_)
+        return [cls.region_info(region, used=True) for region in regions]
+
+    @classmethod
     def init_regions_by_shape(
         cls, shape: shapely.geometry.base.BaseGeometry, buffer: float | None
     ) -> list[Any]:
