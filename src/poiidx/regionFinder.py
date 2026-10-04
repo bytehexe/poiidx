@@ -33,6 +33,52 @@ class RegionFinder:
                 "region": region,
             }
 
+    @staticmethod
+    def _region_from_feature(feature: dict[str, Any]) -> Region | None:
+        """Return the region, or None if it has no PBF download (nothing to fetch)."""
+        properties = feature["properties"]
+        url = properties.get("urls", {}).get("pbf")
+        if url is None:
+            return None
+        return Region(id=properties["id"], name=properties["name"], url=url)
+
+    def all_regions(self) -> list[Region]:
+        regions = (
+            self._region_from_feature(feature)
+            for feature in self.geofabrik_data["features"]
+        )
+        return [region for region in regions if region is not None]
+
+    def find_candidates(self, geo_data: BaseGeometry) -> list[Region]:
+        """All regions intersecting the shape, smallest first (not just the used ones)."""
+        candidates: list[tuple[float, Region]] = []
+        for region in self.all_regions():
+            entry = self._region_cache[region.id]
+            if geo_data.intersects(entry["shape"]):
+                candidates.append((entry["area"], region))
+        candidates.sort(key=lambda candidate: candidate[0])
+        return [region for _, region in candidates]
+
+    def lookup(self, name_or_id: str) -> Region:
+        key = name_or_id.strip()
+        if not key:
+            raise ValueError("Region name or id must not be empty.")
+        regions = self.all_regions()
+        for region in regions:
+            if region.id == key:
+                return region
+        matches = [
+            region for region in regions if region.name.casefold() == key.casefold()
+        ]
+        if not matches:
+            raise ValueError(f"No Geofabrik region with id or name {name_or_id!r}.")
+        if len(matches) > 1:
+            ids = ", ".join(sorted(region.id for region in matches))
+            raise ValueError(
+                f"Region name {name_or_id!r} is ambiguous; use one of these ids: {ids}."
+            )
+        return matches[0]
+
     def find_regions(self, geo_data: BaseGeometry) -> list[Region]:
         geo_data = deepcopy(geo_data)
 
@@ -65,10 +111,11 @@ class RegionFinder:
         used_region_ids = {r.id for r in used_regions}
 
         for region in self.geofabrik_data["features"]:
-            # if "iso3166-1:alpha2" not in region["properties"]:
-            #    continue  # Skip regions without country code
+            candidate = self._region_from_feature(region)
+            if candidate is None:
+                continue  # No PBF to download
 
-            region_id = region["properties"]["id"]
+            region_id = candidate.id
             if region_id in used_region_ids:
                 continue  # Skip already used regions
 
@@ -89,11 +136,7 @@ class RegionFinder:
             size = cache_entry["area"]
 
             if best is None or size < best_size:
-                best = Region(
-                    id=region["properties"]["id"],
-                    name=region["properties"]["name"],
-                    url=region["properties"]["urls"]["pbf"],
-                )
+                best = candidate
                 best_size = size
                 return_geo_data = remaining_geo_data
 
