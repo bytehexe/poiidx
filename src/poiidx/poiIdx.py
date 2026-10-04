@@ -196,8 +196,17 @@ class PoiIdx:
 
     @classmethod
     def has_region_data(cls, region_key: str) -> bool:
-        """Return true if there is at least one POI for the given region key."""
-        return Poi.select().where(Poi.region == region_key).exists()
+        """Return true if the region has at least one POI or administrative boundary.
+
+        Boundaries count too: a region whose filter config matches no POIs would
+        otherwise look un-imported and be re-ingested on every call.
+        """
+        return (
+            Poi.select().where(Poi.region == region_key).exists()
+            or AdministrativeBoundary.select()
+            .where(AdministrativeBoundary.region == region_key)
+            .exists()
+        )
 
     @classmethod
     def initialize_pois_for_region(cls, region_key: str) -> None:
@@ -256,33 +265,38 @@ class PoiIdx:
                 administrative_scan(str(pbf_file), region_id)
                 process_admin_centre_relations(str(pbf_file))
 
+    @staticmethod
+    def buffered_shape(
+        shape: shapely.geometry.base.BaseGeometry, buffer: float | None
+    ) -> shapely.geometry.base.BaseGeometry:
+        """Return the convex hull of the shape widened by `buffer` meters (WGS84 in/out)."""
+        if buffer is None:
+            return shape
+        lp = LocalProjection(shape)
+        local_shape = lp.to_local(shape)
+        return lp.to_wgs(local_shape.convex_hull.buffer(buffer))
+
+    @classmethod
+    def import_region(cls, region_id: str) -> None:
+        """Import a region unless it already has data. Safe to call concurrently."""
+        with _region_lock(region_id):
+            # Checked inside the lock: another thread may have ingested the
+            # region while we were waiting for it.
+            if cls.has_region_data(region_id):
+                logger.debug(f"Region {region_id} already initialized")
+                return
+            logger.debug(f"Initializing region {region_id}")
+            cls.initialize_pois_for_region(region_id)
+
     @classmethod
     def init_regions_by_shape(
         cls, shape: shapely.geometry.base.BaseGeometry, buffer: float | None
     ) -> list[Any]:
-        """Initialize POIs and administrative boundaries for a given region key."""
-
+        """Import every region the finder selects for the shape; return their ids."""
         logger.debug("Initializing regions by shape")
-
-        if buffer is not None:
-            lp = LocalProjection(shape)
-            local_shape = lp.to_local(shape)
-            local_shape = local_shape.convex_hull().buffer(buffer)
-            shape = lp.to_wgs(local_shape)
-
-        regions = cls.find_regions_by_shape(shape)
-        if not regions:
-            return []
+        regions = cls.find_regions_by_shape(cls.buffered_shape(shape, buffer))
         for region in regions:
-            with _region_lock(region.id):
-                # Re-check inside the lock: another thread may have ingested the
-                # region while we were waiting for it.
-                if not cls.has_region_data(region.id):
-                    logger.debug(f"Initializing region {region.id}")
-                    cls.initialize_pois_for_region(region.id)
-                else:
-                    logger.debug(f"Region {region.id} already initialized")
-
+            cls.import_region(region.id)
         return [region.id for region in regions]
 
     @classmethod

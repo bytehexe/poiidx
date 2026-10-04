@@ -7,9 +7,12 @@ from peewee import PostgresqlDatabase
 from shapely.geometry import Point
 
 from poiidx import poiIdx as poi_idx_module
+from poiidx.administrativeBoundary import AdministrativeBoundary
 from poiidx.pbf import Pbf
 from poiidx.poi import Poi
 from poiidx.poiIdx import PoiIdx
+
+from .helpers import run_concurrently
 
 SHAPE = Point(13.4050, 52.5200)
 
@@ -17,26 +20,6 @@ SHAPE = Point(13.4050, 52.5200)
 class _FakeRegion:
     def __init__(self, region_id: str) -> None:
         self.id = region_id
-
-
-def _run_concurrently(target: Any, count: int) -> None:
-    """Run target in `count` threads and re-raise the first failure."""
-    errors: list[BaseException] = []
-
-    def wrapper() -> None:
-        try:
-            target()
-        except BaseException as error:
-            errors.append(error)
-
-    threads = [threading.Thread(target=wrapper) for _ in range(count)]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join(timeout=10)
-        assert not thread.is_alive(), "thread deadlocked"
-    if errors:
-        raise errors[0]
 
 
 def test_concurrent_init_of_the_same_region_ingests_it_only_once(
@@ -75,7 +58,7 @@ def test_concurrent_init_of_the_same_region_ingests_it_only_once(
         PoiIdx, "initialize_pois_for_region", staticmethod(fake_initialize)
     )
 
-    _run_concurrently(lambda: PoiIdx.init_regions_by_shape(SHAPE, None), 2)
+    run_concurrently(lambda: PoiIdx.init_regions_by_shape(SHAPE, None), 2)
 
     assert calls == ["bremen"]
 
@@ -102,7 +85,7 @@ def test_initialising_different_regions_is_not_serialised(
         PoiIdx, "initialize_pois_for_region", staticmethod(fake_initialize)
     )
 
-    _run_concurrently(lambda: PoiIdx.init_regions_by_shape(SHAPE, None), 2)
+    run_concurrently(lambda: PoiIdx.init_regions_by_shape(SHAPE, None), 2)
 
 
 class _FakeSystem:
@@ -159,3 +142,49 @@ def test_failed_ingestion_leaves_no_partial_region_data(
         assert Poi.select().where(Poi.region == "testregion").count() == 0
     finally:
         Poi.delete().where(Poi.region == "testregion").execute()
+
+
+def test_buffered_shape_without_buffer_returns_the_shape() -> None:
+    assert PoiIdx.buffered_shape(SHAPE, None) is SHAPE
+
+
+def test_buffered_shape_widens_the_shape() -> None:
+    """Regression: `convex_hull()` was called as a method and raised TypeError."""
+    result = PoiIdx.buffered_shape(SHAPE, 1000)
+    min_x, _, max_x, _ = result.bounds
+    assert result.contains(SHAPE)
+    assert 0.02 < max_x - min_x < 0.04  # ~2 km at 52.5 degrees north
+
+
+def test_region_with_only_boundaries_counts_as_imported(
+    test_database: PostgresqlDatabase,
+) -> None:
+    """A region whose filter matched no POIs must not be re-ingested forever."""
+    AdministrativeBoundary.create(
+        osm_id="r1",
+        name="Boundary Only",
+        region="boundaryonly",
+        admin_level=4,
+        coordinates=Point(8.8, 53.1).buffer(0.1),
+    )
+    try:
+        assert PoiIdx.has_region_data("boundaryonly")
+        assert not PoiIdx.has_region_data("norows")
+    finally:
+        AdministrativeBoundary.delete().where(
+            AdministrativeBoundary.region == "boundaryonly"
+        ).execute()
+
+
+def test_import_region_skips_a_region_that_is_already_imported(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(PoiIdx, "has_region_data", staticmethod(lambda key: True))
+    monkeypatch.setattr(
+        PoiIdx, "initialize_pois_for_region", staticmethod(calls.append)
+    )
+
+    PoiIdx.import_region("bremen")
+
+    assert calls == []

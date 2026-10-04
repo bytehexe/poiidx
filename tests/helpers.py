@@ -1,3 +1,4 @@
+import threading
 from typing import Any
 
 from shapely.geometry import box, mapping
@@ -31,3 +32,23 @@ def build_index() -> dict[str, Any]:
             feature("everywhere", "Everywhere", (-180, -90, 180, 90), pbf=False),
         ],
     }
+
+
+def run_concurrently(target: Any, count: int) -> None:
+    """Run target in `count` threads and re-raise the first failure."""
+    errors: list[BaseException] = []
+
+    def wrapper() -> None:
+        try:
+            target()
+        except BaseException as error:
+            errors.append(error)
+
+    threads = [threading.Thread(target=wrapper) for _ in range(count)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=10)
+        assert not thread.is_alive(), "thread deadlocked"
+    if errors:
+        raise errors[0]
