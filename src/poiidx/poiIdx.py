@@ -239,13 +239,16 @@ class PoiIdx:
             Pbf(cachedir).get_pbf_filename(region.id, region.url)
 
     @classmethod
-    def region_info(cls, region: Region, used: bool) -> dict[str, Any]:
+    def region_info(
+        cls, region: Region, used: bool, distinct: bool | None = None
+    ) -> dict[str, Any]:
         cachedir = cls._cache_dir()
         return {
             "id": region.id,
             "name": region.name,
             "url": region.url,
             "used": used,
+            "distinct": distinct,
             "downloaded": cachedir is not None
             and (cachedir / f"{region.id}.pbf").exists(),
             "imported": cls.has_region_data(region.id),
@@ -263,9 +266,13 @@ class PoiIdx:
             return [cls.region_info(r, used=False) for r in finder.all_regions()]
         shape = cls.buffered_shape(shape, buffer)
         used_ids = {region.id for region in cls.find_regions_by_shape(shape)}
+        candidates = finder.find_candidates(shape)
+        distinct_ids = finder.distinct_ids(shape, candidates)
         return [
-            cls.region_info(region, used=region.id in used_ids)
-            for region in finder.find_candidates(shape)
+            cls.region_info(
+                region, used=region.id in used_ids, distinct=region.id in distinct_ids
+            )
+            for region in candidates
         ]
 
     @classmethod
@@ -400,7 +407,8 @@ class PoiIdx:
         regions = cls.find_regions_by_shape(cls.buffered_shape(shape, buffer))
         for region in regions:
             cls._fetch(region, import_)
-        return [cls.region_info(region, used=True) for region in regions]
+        # A selected region always covers something no smaller region does.
+        return [cls.region_info(region, used=True, distinct=True) for region in regions]
 
     @classmethod
     def init_regions_by_shape(

@@ -227,16 +227,18 @@ Without `shape`, every region that has a PBF download is returned, all with `use
 
 `buffer` is in meters and applies to every shape-based region function and query: `None` or `0` mean no buffer, a negative value raises `ValueError`.
 
-**Returns:** list of dicts with keys `id` (str), `name` (str), `url` (str), `used` (bool), `downloaded` (bool, PBF is in the persistent cache; always `False` with `pbf_cache=False`), `imported` (bool, the region has POIs or administrative boundaries in the database). All five region functions return this shape.
+**Returns:** list of dicts with keys `id` (str), `name` (str), `url` (str), `used` (bool), `distinct` (bool or `None`: whether the region covers a part of the shape that no single smaller region covers; `None` without a shape), `downloaded` (bool, PBF is in the persistent cache; always `False` with `pbf_cache=False`), `imported` (bool, the region has POIs or administrative boundaries in the database). All five region functions return this shape.
 
 ```python
 from shapely.geometry import Point
 
 for region in poiidx.list_regions(Point(8.8, 53.1)):
-    print(region["id"], region["used"])
-# bremen True
-# germany False
+    print(region["id"], region["used"], region["distinct"])
+# bremen True True
+# germany False False
 ```
+
+`distinct` helps when building a region selector. For a point in Bremen, Germany covers exactly the same part of the shape as Bremen, so it is redundant (`distinct=False`). For points in both Germany and Austria, DACH is not used, but it is `distinct=True`: no single smaller region covers both points, so one DACH download could stand in for two.
 
 ---
 

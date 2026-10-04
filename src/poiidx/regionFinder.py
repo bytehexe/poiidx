@@ -59,6 +59,26 @@ class RegionFinder:
         candidates.sort(key=lambda candidate: candidate[0])
         return [region for _, region in candidates]
 
+    def distinct_ids(
+        self, geo_data: BaseGeometry, candidates: list[Region]
+    ) -> set[str]:
+        """Ids of candidates that cover a part of the shape no smaller candidate covers.
+
+        `candidates` must be ordered smallest first, as `find_candidates` returns them.
+        A larger region is redundant when one single smaller region already covers
+        everything the larger one would add for this shape.
+        """
+        distinct: set[str] = set()
+        for index, region in enumerate(candidates):
+            part = geo_data.intersection(self._region_cache[region.id]["shape"])
+            covered = any(
+                self._region_cache[smaller.id]["shape"].covers(part)
+                for smaller in candidates[:index]
+            )
+            if not covered:
+                distinct.add(region.id)
+        return distinct
+
     def lookup(self, name_or_id: str) -> Region:
         key = name_or_id.strip()
         if not key:

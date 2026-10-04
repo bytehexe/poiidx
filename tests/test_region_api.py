@@ -70,6 +70,7 @@ def test_import_region_by_name_imports_once(world: _World) -> None:
     assert _ids(result) == ["austria"]
     assert result[0]["imported"] is True
     assert result[0]["used"] is False  # no shape, so nothing was "selected"
+    assert result[0]["distinct"] is None
     poiidx.import_region("austria")
     assert world.initialized == ["austria"]
 
@@ -106,6 +107,7 @@ def test_import_regions_at_imports_only_the_selected_region(world: _World) -> No
 
     assert _ids(result) == ["bremen"]
     assert result[0]["used"] is True
+    assert result[0]["distinct"] is True
     assert world.initialized == ["bremen"]  # not germany, not dach
 
 

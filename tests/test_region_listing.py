@@ -2,7 +2,7 @@ import pathlib
 from typing import Any
 
 import pytest  # type: ignore[import-not-found]
-from shapely.geometry import Point
+from shapely.geometry import MultiPoint, Point
 
 from poiidx import poiIdx as poi_idx_module
 from poiidx.pbf import Pbf
@@ -52,7 +52,15 @@ def test_list_regions_marks_the_region_poiidx_would_use(
         ("germany", False),
         ("dach", False),
     ]
-    assert set(infos[0]) == {"id", "name", "url", "used", "downloaded", "imported"}
+    assert set(infos[0]) == {
+        "id",
+        "name",
+        "url",
+        "used",
+        "distinct",
+        "downloaded",
+        "imported",
+    }
 
 
 def test_list_regions_outside_every_region_is_empty(cache_dir: pathlib.Path) -> None:
@@ -127,3 +135,44 @@ def test_download_region_pbf_needs_a_persistent_cache(
 
     with pytest.raises(RuntimeError, match="pbf_cache=True"):
         PoiIdx.download_region_pbf(region)
+
+
+def test_distinct_is_none_without_a_shape(cache_dir: pathlib.Path) -> None:
+    assert all(info["distinct"] is None for info in PoiIdx.list_regions(None, None))
+
+
+def test_larger_regions_are_redundant_when_a_smaller_one_covers_the_same_points(
+    cache_dir: pathlib.Path,
+) -> None:
+    infos = PoiIdx.list_regions(IN_BREMEN, None)
+
+    assert [(i["id"], i["distinct"]) for i in infos] == [
+        ("bremen", True),
+        ("germany", False),
+        ("dach", False),
+    ]
+
+
+def test_a_larger_region_is_distinct_when_it_covers_what_no_single_smaller_one_does(
+    cache_dir: pathlib.Path,
+) -> None:
+    """DACH covers both points; Germany and Austria each cover only one."""
+    shape = MultiPoint([(10, 50), (16, 48)])
+
+    infos = PoiIdx.list_regions(shape, None)
+
+    assert [(i["id"], i["used"], i["distinct"]) for i in infos] == [
+        ("austria", True, True),
+        ("germany", True, True),
+        ("dach", False, True),
+    ]
+
+
+def test_every_used_region_is_distinct(cache_dir: pathlib.Path) -> None:
+    for shape, buffer in (
+        (IN_BREMEN, None),
+        (IN_BREMEN, 1_000_000),
+        (MultiPoint([(10, 50), (16, 48)]), None),
+    ):
+        infos = PoiIdx.list_regions(shape, buffer)
+        assert all(info["distinct"] for info in infos if info["used"])
