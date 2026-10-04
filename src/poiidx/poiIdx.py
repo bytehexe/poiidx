@@ -20,7 +20,7 @@ from .geofabrik import download_region_data
 from .pbf import Pbf
 from .poi import Poi
 from .projection import LocalProjection
-from .regionFinder import RegionFinder
+from .regionFinder import Region, RegionFinder
 from .scanner import administrative_scan, poi_scan, process_admin_centre_relations
 from .schemaHash import SchemaHash
 from .system import System
@@ -209,6 +209,62 @@ class PoiIdx:
         )
 
     @classmethod
+    def _cache_dir(cls) -> pathlib.Path | None:
+        """The persistent PBF cache directory, or None when `pbf_cache=False`."""
+        if not cls.__pbf_cache:  # type: ignore[attr-defined]
+            return None
+        return pathlib.Path(platformdirs.user_cache_dir("poiidx", "bytehexe")) / "pbf"
+
+    @classmethod
+    def _require_cache_dir(cls) -> pathlib.Path:
+        cachedir = cls._cache_dir()
+        if cachedir is None:
+            raise RuntimeError(
+                "Downloading without importing needs a persistent PBF cache: "
+                "connect with pbf_cache=True."
+            )
+        return cachedir
+
+    @classmethod
+    def download_region_pbf(cls, region: Region) -> None:
+        """Ensure the region's PBF is in the persistent cache; do not import it."""
+        cachedir = cls._require_cache_dir()
+        cachedir.mkdir(parents=True, exist_ok=True)
+        # Same lock as import, so a download and an import never fetch the file twice.
+        with _region_lock(region.id):
+            Pbf(cachedir).get_pbf_filename(region.id, region.url)
+
+    @classmethod
+    def region_info(cls, region: Region, used: bool) -> dict[str, Any]:
+        cachedir = cls._cache_dir()
+        return {
+            "id": region.id,
+            "name": region.name,
+            "url": region.url,
+            "used": used,
+            "downloaded": cachedir is not None
+            and (cachedir / f"{region.id}.pbf").exists(),
+            "imported": cls.has_region_data(region.id),
+        }
+
+    @classmethod
+    def list_regions(
+        cls,
+        shape: shapely.geometry.base.BaseGeometry | None,
+        buffer: float | None,
+    ) -> list[dict[str, Any]]:
+        """All regions, or those intersecting the shape with the used ones flagged."""
+        finder = cls.get_finder()
+        if shape is None:
+            return [cls.region_info(r, used=False) for r in finder.all_regions()]
+        shape = cls.buffered_shape(shape, buffer)
+        used_ids = {region.id for region in cls.find_regions_by_shape(shape)}
+        return [
+            cls.region_info(region, used=region.id in used_ids)
+            for region in finder.find_candidates(shape)
+        ]
+
+    @classmethod
     def initialize_pois_for_region(cls, region_key: str) -> None:
         """Initialize POIs for a given region."""
         # Use the finder to get the URL for the region
@@ -228,10 +284,8 @@ class PoiIdx:
         region_url = region["properties"]["urls"]["pbf"]
         region_id = region["properties"]["id"]
 
-        if cls.__pbf_cache:  # type: ignore[attr-defined]
-            cachedir = (
-                pathlib.Path(platformdirs.user_cache_dir("poiidx", "bytehexe")) / "pbf"
-            )
+        cachedir = cls._cache_dir()
+        if cachedir is not None:
             cachedir.mkdir(parents=True, exist_ok=True)
             tempfile_context: Any = nullcontext()
             logger.debug(f"Using PBF cache directory: {cachedir}")
